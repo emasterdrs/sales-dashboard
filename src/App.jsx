@@ -100,6 +100,8 @@ export default function App() {
     const [path, setPath] = useState([{ level: 'root', id: 'all', name: '전체' }]);
     const [amountUnit, setAmountUnit] = useState('1M');
     const [weightUnit, setWeightUnit] = useState('KG');
+    const [showAmountDropdown, setShowAmountDropdown] = useState(false);
+    const [showWeightDropdown, setShowWeightDropdown] = useState(false);
 
     // 동적 매트릭 포맷터 (금액/중량 통합)
     const fMetric = (val) => {
@@ -260,22 +262,30 @@ export default function App() {
                                         >
                                             금액 기준
                                         </button>
-                                        <div className={`relative group transition-all ${metricType === 'amount' ? 'opacity-100' : 'opacity-0 invisible'}`}>
-                                            <button className="flex items-center justify-between w-full px-3 py-1.5 rounded-md bg-white/5 border border-white/5 text-[10px] font-bold text-slate-400 hover:border-indigo-500/30 hover:text-white transition-all">
+                                        <div className={`relative transition-all ${metricType === 'amount' ? 'opacity-100' : 'opacity-0 invisible'}`}>
+                                            <button
+                                                onClick={() => setShowAmountDropdown(!showAmountDropdown)}
+                                                className="flex items-center justify-between w-full px-3 py-1.5 rounded-md bg-white/5 border border-white/5 text-[10px] font-bold text-slate-400 hover:border-indigo-500/30 hover:text-white transition-all"
+                                            >
                                                 <span>{CURRENCY_UNITS.find(u => u.key === amountUnit)?.label}</span>
-                                                <ChevronDown size={10} className="text-indigo-400 group-hover:rotate-180 transition-transform" />
+                                                <ChevronDown size={10} className={`text-indigo-400 transition-transform ${showAmountDropdown ? 'rotate-180' : ''}`} />
                                             </button>
-                                            <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0c1a] border border-white/10 rounded-lg shadow-2xl invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all z-[100] py-1">
-                                                {CURRENCY_UNITS.map(unit => (
-                                                    <button
-                                                        key={unit.key}
-                                                        onClick={() => setAmountUnit(unit.key)}
-                                                        className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${amountUnit === unit.key ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
-                                                    >
-                                                        {unit.label}
-                                                    </button>
-                                                ))}
-                                            </div>
+                                            {showAmountDropdown && (
+                                                <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0c1a] border border-white/10 rounded-lg shadow-2xl z-[100] py-1 opacity-100 visible">
+                                                    {CURRENCY_UNITS.map(unit => (
+                                                        <button
+                                                            key={unit.key}
+                                                            onClick={() => {
+                                                                setAmountUnit(unit.key);
+                                                                setShowAmountDropdown(false);
+                                                            }}
+                                                            className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${amountUnit === unit.key ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                                                        >
+                                                            {unit.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -287,22 +297,30 @@ export default function App() {
                                         >
                                             중량 기준
                                         </button>
-                                        <div className={`relative group transition-all ${metricType === 'weight' ? 'opacity-100' : 'opacity-0 invisible'}`}>
-                                            <button className="flex items-center justify-between w-full px-3 py-1.5 rounded-md bg-white/5 border border-white/5 text-[10px] font-bold text-slate-400 hover:border-indigo-500/30 hover:text-white transition-all">
+                                        <div className={`relative transition-all ${metricType === 'weight' ? 'opacity-100' : 'opacity-0 invisible'}`}>
+                                            <button
+                                                onClick={() => setShowWeightDropdown(!showWeightDropdown)}
+                                                className="flex items-center justify-between w-full px-3 py-1.5 rounded-md bg-white/5 border border-white/5 text-[10px] font-bold text-slate-400 hover:border-indigo-500/30 hover:text-white transition-all"
+                                            >
                                                 <span>{WEIGHT_UNITS.find(u => u.key === weightUnit)?.label}</span>
-                                                <ChevronDown size={10} className="text-indigo-400 group-hover:rotate-180 transition-transform" />
+                                                <ChevronDown size={10} className={`text-indigo-400 transition-transform ${showWeightDropdown ? 'rotate-180' : ''}`} />
                                             </button>
-                                            <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0c1a] border border-white/10 rounded-lg shadow-2xl invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all z-[100] py-1">
-                                                {WEIGHT_UNITS.map(unit => (
-                                                    <button
-                                                        key={unit.key}
-                                                        onClick={() => setWeightUnit(unit.key)}
-                                                        className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${weightUnit === unit.key ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
-                                                    >
-                                                        {unit.label}
-                                                    </button>
-                                                ))}
-                                            </div>
+                                            {showWeightDropdown && (
+                                                <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0c1a] border border-white/10 rounded-lg shadow-2xl z-[100] py-1 opacity-100 visible">
+                                                    {WEIGHT_UNITS.map(unit => (
+                                                        <button
+                                                            key={unit.key}
+                                                            onClick={() => {
+                                                                setWeightUnit(unit.key);
+                                                                setShowWeightDropdown(false);
+                                                            }}
+                                                            className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${weightUnit === unit.key ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                                                        >
+                                                            {unit.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
