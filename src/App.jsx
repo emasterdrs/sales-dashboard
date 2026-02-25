@@ -241,13 +241,13 @@ export default function App() {
                                 <div className="flex bg-white/5 p-1 rounded-xl flex-1">
                                     <button
                                         onClick={() => setMainTab('current')}
-                                        className={`flex-1 px-4 md:px-8 py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-black transition-all ${mainTab === 'current' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
+                                        className={`flex-1 px-4 md:px-8 py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-black transition-all whitespace-nowrap ${mainTab === 'current' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
                                     >
                                         현재실적
                                     </button>
                                     <button
                                         onClick={() => setMainTab('expected')}
-                                        className={`flex-1 px-4 md:px-8 py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-black transition-all ${mainTab === 'expected' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
+                                        className={`flex-1 px-4 md:px-8 py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-black transition-all whitespace-nowrap ${mainTab === 'expected' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
                                     >
                                         예상마감
                                     </button>
