@@ -179,9 +179,9 @@ export default function App() {
     };
 
     return (
-        <div className="h-screen bg-[#070914] text-slate-300 flex overflow-hidden font-sans">
-            {/* Sidebar - 고정, 슬림 */}
-            <aside className="w-16 bg-[#0a0c1a] border-r border-white/5 flex flex-col items-center py-6 z-50">
+        <div className="min-h-screen bg-[#070914] text-slate-300 flex flex-col md:flex-row overflow-x-hidden font-sans pb-20 md:pb-0">
+            {/* Sidebar - Desktop Only */}
+            <aside className="hidden md:flex w-16 bg-[#0a0c1a] border-r border-white/5 flex-col items-center py-6 z-50 h-screen sticky top-0">
                 <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white mb-10 shadow-lg shadow-indigo-600/20">
                     <Zap size={20} fill="currentColor" />
                 </div>
@@ -195,68 +195,68 @@ export default function App() {
             {/* 메인 뷰포트 - 스크롤 억제 및 그리드 배치 */}
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
                 {/* 상단 통합 제어바 */}
-                <header className="py-10 px-10 border-b border-white/5 bg-gradient-to-b from-[#0a0c1a] to-transparent">
-                    <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 mb-8">
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-4">
+                <header className="py-6 px-4 md:py-10 md:px-10 border-b border-white/5 bg-gradient-to-b from-[#0a0c1a] to-transparent">
+                    <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 md:gap-8 mb-6 md:mb-8">
+                        <div className="flex-1 min-w-0 w-full">
+                            <div className="flex items-center gap-2 mb-2 md:mb-4">
                                 <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                                <span className="text-indigo-400 text-xs font-black uppercase tracking-widest">Live Analysis System</span>
+                                <span className="text-indigo-400 text-[10px] md:text-xs font-black uppercase tracking-widest">Live Analysis System</span>
                             </div>
-                            <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter italic mb-3 truncate">
+                            <h1 className="text-2xl md:text-5xl font-black text-white tracking-tighter italic mb-2 md:mb-3 leading-tight">
                                 2026년 2월 <span className={mainTab === 'expected' ? 'text-indigo-400' : 'text-emerald-400'}>
                                     {mainTab === 'expected' ? '예상마감 실적' : '매출 실적'}
                                 </span>
                             </h1>
-                            <div className="flex items-center gap-4 text-slate-400 font-bold text-sm px-1">
-                                <span className="flex items-center gap-1.5"><Calendar size={16} className="text-indigo-400" /> 매출 기준일: 2026.02.24</span>
+                            <div className="flex items-center gap-4 text-slate-400 font-bold text-xs md:text-sm px-1">
+                                <span className="flex items-center gap-1.5"><Calendar size={14} className="text-indigo-400 md:size-4" /> 매출 기준일: 2026.02.24</span>
                             </div>
                         </div>
 
-                        <div className="flex flex-col md:flex-row items-start md:items-center gap-6 shrink-0">
+                        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 md:gap-6 shrink-0 w-full md:w-auto">
                             {/* 영업 진도 요약 미니 표 - 우측 배치 */}
-                            <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0f1220]/80 shadow-2xl transition-all hover:border-indigo-500/30">
-                                <table className="text-[11px] leading-tight">
+                            <div className="overflow-x-auto no-scrollbar rounded-xl border border-white/10 bg-[#0f1220]/80 shadow-2xl transition-all hover:border-indigo-500/30">
+                                <table className="text-[10px] md:text-[11px] leading-tight min-w-full">
                                     <thead className="bg-white/[0.05] border-b border-white/10">
-                                        <tr className="text-slate-400 font-bold uppercase tracking-tighter">
-                                            <th className="px-5 py-2.5 border-r border-white/10">영업일 (오늘)</th>
-                                            <th className="px-5 py-2.5 border-r border-white/10">총 영업일</th>
-                                            <th className="px-5 py-2.5 border-r border-white/10 text-indigo-300 font-black">진도율(오늘)</th>
-                                            <th className="px-5 py-2.5">1일 평균</th>
+                                        <tr className="text-slate-400 font-bold uppercase tracking-tighter whitespace-nowrap">
+                                            <th className="px-3 md:px-5 py-2 md:py-2.5 border-r border-white/10">영업일</th>
+                                            <th className="px-3 md:px-5 py-2 md:py-2.5 border-r border-white/10">총 영업일</th>
+                                            <th className="px-3 md:px-5 py-2 md:py-2.5 text-indigo-300 font-black">진도율</th>
+                                            <th className="px-3 md:px-5 py-2 md:py-2.5">1일 평균</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-center font-black">
                                         <tr>
-                                            <td className="px-5 py-3 text-white text-xl border-r border-white/10">{SETTINGS.currentBusinessDay}</td>
-                                            <td className="px-5 py-3 text-slate-300 text-xl border-r border-white/10">{SETTINGS.businessDays['2026-02']}</td>
-                                            <td className="px-5 py-3 text-indigo-400 border-r border-white/10 text-2xl tracking-tighter">{((SETTINGS.currentBusinessDay / SETTINGS.businessDays['2026-02']) * 100).toFixed(1)}%</td>
-                                            <td className="px-5 py-3 text-slate-400 text-sm font-mono">{(100 / SETTINGS.businessDays['2026-02']).toFixed(1)}%</td>
+                                            <td className="px-3 md:px-5 py-2 md:py-3 text-white text-lg md:text-xl border-r border-white/10">{SETTINGS.currentBusinessDay}</td>
+                                            <td className="px-3 md:px-5 py-2 md:py-3 text-slate-300 text-lg md:text-xl border-r border-white/10">{SETTINGS.businessDays['2026-02']}</td>
+                                            <td className="px-3 md:px-5 py-2 md:py-3 text-indigo-400 border-r border-white/10 text-xl md:text-2xl tracking-tighter">{((SETTINGS.currentBusinessDay / SETTINGS.businessDays['2026-02']) * 100).toFixed(1)}%</td>
+                                            <td className="px-3 md:px-5 py-2 md:py-3 text-slate-400 text-[10px] md:text-sm font-mono">{(100 / SETTINGS.businessDays['2026-02']).toFixed(1)}%</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
 
-                            <div className="flex bg-[#0f1220] p-1.5 rounded-2xl border border-white/10 shadow-2xl gap-3 items-center">
-                                <div className="flex bg-white/5 p-1 rounded-xl">
+                            <div className="flex flex-col sm:flex-row bg-[#0f1220] p-1.5 rounded-2xl border border-white/10 shadow-2xl gap-3 items-stretch sm:items-center">
+                                <div className="flex bg-white/5 p-1 rounded-xl flex-1">
                                     <button
                                         onClick={() => setMainTab('current')}
-                                        className={`px-8 py-2.5 rounded-lg text-sm font-black transition-all ${mainTab === 'current' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
+                                        className={`flex-1 px-4 md:px-8 py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-black transition-all ${mainTab === 'current' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
                                     >
                                         현재실적
                                     </button>
                                     <button
                                         onClick={() => setMainTab('expected')}
-                                        className={`px-8 py-2.5 rounded-lg text-sm font-black transition-all ${mainTab === 'expected' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
+                                        className={`flex-1 px-4 md:px-8 py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-black transition-all ${mainTab === 'expected' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
                                     >
                                         예상마감
                                     </button>
                                 </div>
 
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-col xs:flex-row items-center gap-2 flex-1">
                                     {/* 금액 선택 그룹 */}
-                                    <div className="flex flex-col gap-1.5 min-w-[124px]">
+                                    <div className="flex flex-col gap-1.5 flex-1 min-w-[100px] w-full">
                                         <button
                                             onClick={() => setMetricType('amount')}
-                                            className={`px-6 py-2 rounded-lg text-xs font-black transition-all border ${metricType === 'amount' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50 shadow-lg' : 'text-slate-500 border-transparent hover:text-slate-400'}`}
+                                            className={`w-full px-4 md:px-6 py-2 rounded-lg text-xs font-black transition-all border ${metricType === 'amount' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50 shadow-lg' : 'text-slate-500 border-transparent hover:text-slate-400'}`}
                                         >
                                             금액 기준
                                         </button>
@@ -280,10 +280,10 @@ export default function App() {
                                     </div>
 
                                     {/* 중량 선택 그룹 */}
-                                    <div className="flex flex-col gap-1.5 min-w-[124px]">
+                                    <div className="flex flex-col gap-1.5 flex-1 min-w-[100px] w-full">
                                         <button
                                             onClick={() => setMetricType('weight')}
-                                            className={`px-6 py-2 rounded-lg text-xs font-black transition-all border ${metricType === 'weight' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50 shadow-lg' : 'text-slate-500 border-transparent hover:text-slate-400'}`}
+                                            className={`w-full px-4 md:px-6 py-2 rounded-lg text-xs font-black transition-all border ${metricType === 'weight' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50 shadow-lg' : 'text-slate-500 border-transparent hover:text-slate-400'}`}
                                         >
                                             중량 기준
                                         </button>
@@ -322,30 +322,32 @@ export default function App() {
                     )}
                 </header>
 
-                <main className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6 bg-[#070914]">
+                <main className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-6 bg-[#070914] md:max-h-screen">
                     {view === 'settings' ? <SettingsView /> : (
                         <div className="max-w-[1600px] mx-auto space-y-8">
                             {/* 분석 모드 탭 내비게이션 (임원진용 대형 탭) */}
-                            <div className="flex bg-[#0a0c1a] p-1.5 rounded-2xl border border-white/10 w-fit shadow-2xl">
-                                {[
-                                    { id: 'goal', name: '목표대비' },
-                                    { id: 'yoy', name: '전년대비' },
-                                    { id: 'mom', name: '전월대비' },
-                                    { id: 'cumulative', name: '누계' },
-                                    { id: 'forecast', name: '예상마감' }
-                                ].map(tab => (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setAnalysisMode(tab.id)}
-                                        className={`px-10 py-3.5 rounded-xl text-base font-black transition-all ${analysisMode === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40' : 'text-slate-500 hover:text-slate-300'}`}
-                                    >
-                                        {tab.name}
-                                    </button>
-                                ))}
+                            <div className="overflow-x-auto no-scrollbar pb-1">
+                                <div className="flex bg-[#0a0c1a] p-1 rounded-2xl border border-white/10 w-fit shadow-2xl min-w-full sm:min-w-0">
+                                    {[
+                                        { id: 'goal', name: '목표대비' },
+                                        { id: 'yoy', name: '전년대비' },
+                                        { id: 'mom', name: '전월대비' },
+                                        { id: 'cumulative', name: '누계' },
+                                        { id: 'forecast', name: '예상마감' }
+                                    ].map(tab => (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => setAnalysisMode(tab.id)}
+                                            className={`px-4 md:px-10 py-2.5 md:py-3.5 rounded-xl text-xs md:text-base font-black transition-all whitespace-nowrap ${analysisMode === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40' : 'text-slate-500 hover:text-slate-300'}`}
+                                        >
+                                            {tab.name}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             {/* 핵심 KPI 섹션 (모드별 동적 변경) */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
                                 {analysisMode === 'goal' && (
                                     <>
                                         <CompactStat title="당월 목표" value={fCurrency(summary.target)} icon={Target} color="slate" />
@@ -559,6 +561,13 @@ export default function App() {
                         </div>
                     )}
                 </main>
+
+                {/* Mobile Bottom Navigation */}
+                <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] bg-[#0a0c1a]/80 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 flex items-center justify-around shadow-2xl z-50">
+                    <SidebarIcon active={view === 'dashboard'} icon={LayoutDashboard} onClick={() => setView('dashboard')} />
+                    <SidebarIcon active={view === 'receivables'} icon={CreditCard} onClick={() => setView('receivables')} />
+                    <SidebarIcon active={view === 'settings'} icon={Settings} onClick={() => setView('settings')} />
+                </nav>
             </div>
         </div>
     );
@@ -567,8 +576,8 @@ export default function App() {
 // 사이드바 아이콘 컴포넌트
 function SidebarIcon({ active, icon: Icon, onClick }) {
     return (
-        <button onClick={onClick} className={`p-2.5 rounded-xl transition-all ${active ? 'bg-white/5 text-indigo-400' : 'text-slate-600 hover:text-slate-400'}`}>
-            <Icon size={20} />
+        <button onClick={onClick} className={`p-3 md:p-2.5 rounded-xl transition-all ${active ? 'bg-white/10 text-indigo-400' : 'text-slate-600 hover:text-slate-400'}`}>
+            <Icon size={20} className="md:size-5" />
         </button>
     );
 }
@@ -580,7 +589,7 @@ function CustomLabel({ x, y, width, value, mainTab, analysisMode }) {
     const label = value > 0 ? `+${value.toFixed(1)}` : value.toFixed(1);
     const unit = analysisMode === 'goal' ? '%p' : '%';
     return (
-        <text x={x + width / 2} y={y - 12} fill={isNeg ? '#f43f5e' : '#10b981'} textAnchor="middle" fontSize={11} fontWeight="900">
+        <text x={x + width / 2} y={y - 12} fill={isNeg ? '#f43f5e' : '#10b981'} textAnchor="middle" fontSize={10} fontWeight="900">
             {label}{unit}
         </text>
     );
