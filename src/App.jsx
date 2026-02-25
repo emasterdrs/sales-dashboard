@@ -237,105 +237,108 @@ export default function App() {
                                 </table>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row bg-[#0f1220] p-1.5 rounded-2xl border border-white/10 shadow-2xl gap-3 items-stretch sm:items-center">
-                                <div className="flex bg-white/5 p-1 rounded-xl flex-1">
-                                    <button
-                                        onClick={() => setMainTab('current')}
-                                        className={`flex-1 px-4 md:px-8 py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-black transition-all whitespace-nowrap ${mainTab === 'current' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
-                                    >
-                                        현재실적
-                                    </button>
-                                    <button
-                                        onClick={() => setMainTab('expected')}
-                                        className={`flex-1 px-4 md:px-8 py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-black transition-all whitespace-nowrap ${mainTab === 'expected' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
-                                    >
-                                        예상마감
-                                    </button>
-                                </div>
+                            <div className="flex flex-col gap-3 shrink-0 w-full md:w-auto">
+                                <div className="flex flex-col sm:flex-row bg-[#0f1220] p-1.5 rounded-2xl border border-white/10 shadow-2xl gap-3">
+                                    {/* 실적 모드 토글 */}
+                                    <div className="flex bg-white/5 p-1 rounded-xl flex-1 min-w-[160px]">
+                                        <button
+                                            onClick={() => setMainTab('current')}
+                                            className={`flex-1 px-4 py-2 rounded-lg text-[10px] md:text-sm font-black transition-all whitespace-nowrap ${mainTab === 'current' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
+                                        >
+                                            현재실적
+                                        </button>
+                                        <button
+                                            onClick={() => setMainTab('expected')}
+                                            className={`flex-1 px-4 py-2 rounded-lg text-[10px] md:text-sm font-black transition-all whitespace-nowrap ${mainTab === 'expected' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
+                                        >
+                                            예상마감
+                                        </button>
+                                    </div>
 
-                                <div className="flex flex-col xs:flex-row items-center gap-2 flex-1">
-                                    {/* 금액 선택 그룹 */}
-                                    <div className="flex flex-col gap-1.5 flex-1 min-w-[100px] w-full">
+                                    {/* 기준 모드 토글 */}
+                                    <div className="flex bg-white/5 p-1 rounded-xl flex-1 min-w-[160px]">
                                         <button
                                             onClick={() => setMetricType('amount')}
-                                            className={`w-full px-4 md:px-6 py-2 rounded-lg text-xs font-black transition-all border ${metricType === 'amount' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50 shadow-lg' : 'text-slate-500 border-transparent hover:text-slate-400'}`}
+                                            className={`flex-1 px-4 py-2 rounded-lg text-[10px] md:text-sm font-black transition-all whitespace-nowrap ${metricType === 'amount' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
                                         >
                                             금액 기준
                                         </button>
-                                        <div className="relative transition-all">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setMetricType('amount');
-                                                    setShowAmountDropdown(!showAmountDropdown);
-                                                    setShowWeightDropdown(false);
-                                                }}
-                                                className={`flex items-center justify-between w-full px-3 py-1.5 rounded-md bg-white/5 border text-[10px] font-bold transition-all ${metricType === 'amount' ? 'border-indigo-500/30 text-white' : 'border-white/5 text-slate-500'}`}
-                                            >
-                                                <span>{CURRENCY_UNITS.find(u => u.key === amountUnit)?.label}</span>
-                                                <ChevronDown size={10} className={`text-indigo-400 transition-transform ${showAmountDropdown ? 'rotate-180' : ''}`} />
-                                            </button>
-                                            {showAmountDropdown && (
-                                                <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0c1a] border border-white/10 rounded-lg shadow-2xl z-[100] py-1">
-                                                    {CURRENCY_UNITS.map(unit => (
-                                                        <button
-                                                            key={unit.key}
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setAmountUnit(unit.key);
-                                                                setMetricType('amount');
-                                                                setShowAmountDropdown(false);
-                                                            }}
-                                                            className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${amountUnit === unit.key ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
-                                                        >
-                                                            {unit.label}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* 중량 선택 그룹 */}
-                                    <div className="flex flex-col gap-1.5 flex-1 min-w-[100px] w-full">
                                         <button
                                             onClick={() => setMetricType('weight')}
-                                            className={`w-full px-4 md:px-6 py-2 rounded-lg text-xs font-black transition-all border ${metricType === 'weight' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50 shadow-lg' : 'text-slate-500 border-transparent hover:text-slate-400'}`}
+                                            className={`flex-1 px-4 py-2 rounded-lg text-[10px] md:text-sm font-black transition-all whitespace-nowrap ${metricType === 'weight' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-slate-200'}`}
                                         >
                                             중량 기준
                                         </button>
-                                        <div className="relative transition-all">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setMetricType('weight');
-                                                    setShowWeightDropdown(!showWeightDropdown);
-                                                    setShowAmountDropdown(false);
-                                                }}
-                                                className={`flex items-center justify-between w-full px-3 py-1.5 rounded-md bg-white/5 border text-[10px] font-bold transition-all ${metricType === 'weight' ? 'border-indigo-500/30 text-white' : 'border-white/5 text-slate-500'}`}
-                                            >
-                                                <span>{WEIGHT_UNITS.find(u => u.key === weightUnit)?.label}</span>
-                                                <ChevronDown size={10} className={`text-indigo-400 transition-transform ${showWeightDropdown ? 'rotate-180' : ''}`} />
-                                            </button>
-                                            {showWeightDropdown && (
-                                                <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0c1a] border border-white/10 rounded-lg shadow-2xl z-[100] py-1">
-                                                    {WEIGHT_UNITS.map(unit => (
-                                                        <button
-                                                            key={unit.key}
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setWeightUnit(unit.key);
-                                                                setMetricType('weight');
-                                                                setShowWeightDropdown(false);
-                                                            }}
-                                                            className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${weightUnit === unit.key ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
-                                                        >
-                                                            {unit.label}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    {/* 금액 단위 선택 */}
+                                    <div className="relative flex-1">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setMetricType('amount');
+                                                setShowAmountDropdown(!showAmountDropdown);
+                                                setShowWeightDropdown(false);
+                                            }}
+                                            className={`flex items-center justify-between w-full px-3 py-1.5 rounded-md bg-white/5 border text-[10px] font-bold transition-all ${metricType === 'amount' ? 'border-indigo-500/30 text-white' : 'border-white/5 text-slate-500'}`}
+                                        >
+                                            <span className="truncate">{CURRENCY_UNITS.find(u => u.key === amountUnit)?.label} (금액)</span>
+                                            <ChevronDown size={10} className={`text-indigo-400 transition-transform ${showAmountDropdown ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        {showAmountDropdown && (
+                                            <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0c1a] border border-white/10 rounded-lg shadow-2xl z-[100] py-1">
+                                                {CURRENCY_UNITS.map(unit => (
+                                                    <button
+                                                        key={unit.key}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setAmountUnit(unit.key);
+                                                            setMetricType('amount');
+                                                            setShowAmountDropdown(false);
+                                                        }}
+                                                        className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${amountUnit === unit.key ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                                                    >
+                                                        {unit.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* 중량 단위 선택 */}
+                                    <div className="relative flex-1">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setMetricType('weight');
+                                                setShowWeightDropdown(!showWeightDropdown);
+                                                setShowAmountDropdown(false);
+                                            }}
+                                            className={`flex items-center justify-between w-full px-3 py-1.5 rounded-md bg-white/5 border text-[10px] font-bold transition-all ${metricType === 'weight' ? 'border-indigo-500/30 text-white' : 'border-white/5 text-slate-500'}`}
+                                        >
+                                            <span className="truncate">{WEIGHT_UNITS.find(u => u.key === weightUnit)?.label} (중량)</span>
+                                            <ChevronDown size={10} className={`text-indigo-400 transition-transform ${showWeightDropdown ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        {showWeightDropdown && (
+                                            <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0c1a] border border-white/10 rounded-lg shadow-2xl z-[100] py-1">
+                                                {WEIGHT_UNITS.map(unit => (
+                                                    <button
+                                                        key={unit.key}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setWeightUnit(unit.key);
+                                                            setMetricType('weight');
+                                                            setShowWeightDropdown(false);
+                                                        }}
+                                                        className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${weightUnit === unit.key ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                                                    >
+                                                        {unit.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
