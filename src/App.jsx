@@ -262,21 +262,28 @@ export default function App() {
                                         >
                                             금액 기준
                                         </button>
-                                        <div className={`relative transition-all ${metricType === 'amount' ? 'opacity-100' : 'opacity-0 invisible'}`}>
+                                        <div className="relative transition-all">
                                             <button
-                                                onClick={() => setShowAmountDropdown(!showAmountDropdown)}
-                                                className="flex items-center justify-between w-full px-3 py-1.5 rounded-md bg-white/5 border border-white/5 text-[10px] font-bold text-slate-400 hover:border-indigo-500/30 hover:text-white transition-all"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setMetricType('amount');
+                                                    setShowAmountDropdown(!showAmountDropdown);
+                                                    setShowWeightDropdown(false);
+                                                }}
+                                                className={`flex items-center justify-between w-full px-3 py-1.5 rounded-md bg-white/5 border text-[10px] font-bold transition-all ${metricType === 'amount' ? 'border-indigo-500/30 text-white' : 'border-white/5 text-slate-500'}`}
                                             >
                                                 <span>{CURRENCY_UNITS.find(u => u.key === amountUnit)?.label}</span>
                                                 <ChevronDown size={10} className={`text-indigo-400 transition-transform ${showAmountDropdown ? 'rotate-180' : ''}`} />
                                             </button>
                                             {showAmountDropdown && (
-                                                <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0c1a] border border-white/10 rounded-lg shadow-2xl z-[100] py-1 opacity-100 visible">
+                                                <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0c1a] border border-white/10 rounded-lg shadow-2xl z-[100] py-1">
                                                     {CURRENCY_UNITS.map(unit => (
                                                         <button
                                                             key={unit.key}
-                                                            onClick={() => {
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
                                                                 setAmountUnit(unit.key);
+                                                                setMetricType('amount');
                                                                 setShowAmountDropdown(false);
                                                             }}
                                                             className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${amountUnit === unit.key ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
@@ -297,21 +304,28 @@ export default function App() {
                                         >
                                             중량 기준
                                         </button>
-                                        <div className={`relative transition-all ${metricType === 'weight' ? 'opacity-100' : 'opacity-0 invisible'}`}>
+                                        <div className="relative transition-all">
                                             <button
-                                                onClick={() => setShowWeightDropdown(!showWeightDropdown)}
-                                                className="flex items-center justify-between w-full px-3 py-1.5 rounded-md bg-white/5 border border-white/5 text-[10px] font-bold text-slate-400 hover:border-indigo-500/30 hover:text-white transition-all"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setMetricType('weight');
+                                                    setShowWeightDropdown(!showWeightDropdown);
+                                                    setShowAmountDropdown(false);
+                                                }}
+                                                className={`flex items-center justify-between w-full px-3 py-1.5 rounded-md bg-white/5 border text-[10px] font-bold transition-all ${metricType === 'weight' ? 'border-indigo-500/30 text-white' : 'border-white/5 text-slate-500'}`}
                                             >
                                                 <span>{WEIGHT_UNITS.find(u => u.key === weightUnit)?.label}</span>
                                                 <ChevronDown size={10} className={`text-indigo-400 transition-transform ${showWeightDropdown ? 'rotate-180' : ''}`} />
                                             </button>
                                             {showWeightDropdown && (
-                                                <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0c1a] border border-white/10 rounded-lg shadow-2xl z-[100] py-1 opacity-100 visible">
+                                                <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0c1a] border border-white/10 rounded-lg shadow-2xl z-[100] py-1">
                                                     {WEIGHT_UNITS.map(unit => (
                                                         <button
                                                             key={unit.key}
-                                                            onClick={() => {
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
                                                                 setWeightUnit(unit.key);
+                                                                setMetricType('weight');
                                                                 setShowWeightDropdown(false);
                                                             }}
                                                             className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${weightUnit === unit.key ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
