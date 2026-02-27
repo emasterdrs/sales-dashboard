@@ -315,7 +315,7 @@ export default function App() {
             {/* 메인 뷰포트 */}
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
                 {/* 상단 통합 제어바 */}
-                <header className="py-4 px-4 md:py-6 md:px-10 border-b border-slate-200 bg-white">
+                <header className="py-2 px-4 md:py-3 md:px-8 border-b border-slate-200 bg-white">
                     <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 md:gap-6 mb-2 md:mb-4">
                         <div className="flex-1 min-w-0 w-full">
                             <div className="flex items-center gap-2 mb-2 md:mb-4">
@@ -345,87 +345,80 @@ export default function App() {
                                 <table className="text-[10px] md:text-[11px] leading-tight min-w-full">
                                     <thead className="bg-slate-100 border-b border-slate-200">
                                         <tr className="text-slate-500 font-bold uppercase tracking-tighter whitespace-nowrap">
-                                            <th className="px-3 md:px-5 py-2 md:py-2.5 border-r border-slate-200">영업일</th>
-                                            <th className="px-3 md:px-5 py-2 md:py-2.5 border-r border-slate-200">총 영업일</th>
-                                            <th className="px-3 md:px-5 py-2 md:py-2.5 text-indigo-600 font-black">진도율</th>
-                                            <th className="px-3 md:px-5 py-2 md:py-2.5">1일 평균</th>
+                                            <th className="px-3 md:px-4 py-1.5 md:py-2 border-r border-slate-200">영업일</th>
+                                            <th className="px-3 md:px-4 py-1.5 md:py-2 border-r border-slate-200">총 영업일</th>
+                                            <th className="px-3 md:px-4 py-1.5 md:py-2 text-indigo-600 font-black">진도율</th>
+                                            <th className="px-3 md:px-4 py-1.5 md:py-2">1일 평균</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-center font-black">
                                         <tr>
-                                            <td className="px-3 md:px-5 py-2 md:py-3 text-slate-900 text-lg md:text-xl border-r border-slate-200">{SETTINGS.currentBusinessDay}</td>
-                                            <td className="px-3 md:px-5 py-2 md:py-3 text-slate-500 text-lg md:text-xl border-r border-slate-200">{SETTINGS.businessDays['2026-02']}</td>
-                                            <td className="px-3 md:px-5 py-2 md:py-3 text-indigo-600 border-r border-slate-200 text-xl md:text-2xl tracking-tighter">{((SETTINGS.currentBusinessDay / SETTINGS.businessDays['2026-02']) * 100).toFixed(1)}%</td>
-                                            <td className="px-3 md:px-5 py-2 md:py-3 text-slate-400 text-[10px] md:text-sm font-mono">{(100 / SETTINGS.businessDays['2026-02']).toFixed(1)}%</td>
+                                            <td className="px-3 md:px-4 py-1.5 md:py-2 text-slate-900 text-lg md:text-xl border-r border-slate-200">{SETTINGS.currentBusinessDay}</td>
+                                            <td className="px-3 md:px-4 py-1.5 md:py-2 text-slate-500 text-lg md:text-xl border-r border-slate-200">{SETTINGS.businessDays['2026-02']}</td>
+                                            <td className="px-3 md:px-4 py-1.5 md:py-2 text-indigo-600 border-r border-slate-200 text-xl md:text-2xl tracking-tighter">{((SETTINGS.currentBusinessDay / SETTINGS.businessDays['2026-02']) * 100).toFixed(1)}%</td>
+                                            <td className="px-3 md:px-4 py-1.5 md:py-2 text-slate-400 text-[10px] md:text-sm font-mono">{(100 / SETTINGS.businessDays['2026-02']).toFixed(1)}%</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
 
-                            <div className="flex flex-col gap-3 shrink-0 w-full sm:w-[320px] bg-slate-50/50 p-3 rounded-[24px] border border-slate-200/60 shadow-inner">
-                                {/* 헤더: 분석 조건 설정 (아이콘 추가) */}
-                                <div className="flex items-center gap-2 px-2 mb-1">
-                                    <Filter size={12} className="text-indigo-500" />
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Analysis Filters</span>
-                                </div>
-
-                                {/* 월 선택 드롭다운 (이동됨) */}
-                                <div className="relative group">
-                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-500 group-hover:scale-110 transition-transform">
-                                        <Calendar size={14} />
+                            <div className="flex flex-col gap-2 shrink-0 w-full sm:w-[320px] bg-slate-50/80 p-2.5 rounded-[1.5rem] border border-slate-200/60 shadow-sm">
+                                {/* 헤더 간소화 */}
+                                <div className="flex items-center justify-between px-1">
+                                    <div className="flex items-center gap-1.5">
+                                        <Filter size={10} className="text-indigo-500" />
+                                        <span className="text-[9px] font-black text-slate-400 tracking-widest">FILTERS</span>
                                     </div>
-                                    <select
-                                        value={selectedMonth}
-                                        onChange={(e) => setSelectedMonth(e.target.value)}
-                                        className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[11px] font-black text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer shadow-sm appearance-none transition-all"
-                                    >
-                                        <optgroup label="2026년">
-                                            <option value="2026-02">2026년 02월</option>
-                                            <option value="2026-01">2026년 01월</option>
-                                        </optgroup>
-                                        <optgroup label="2025년">
-                                            {Array.from({ length: 12 }, (_, i) => 12 - i).map(m => (
-                                                <option key={m} value={`2025-${m.toString().padStart(2, '0')}`}>2025년 {m.toString().padStart(2, '0')}월</option>
-                                            ))}
-                                        </optgroup>
-                                    </select>
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                        <ChevronDown size={12} />
+                                    <div className="relative w-32 group"> {/* 월 선택을 헤더 옆으로 배치 가능하지만 일단 공간 확보를 위해 그리드 처리 */}
+                                        <div className="absolute left-2 top-1/2 -translate-y-1/2 text-indigo-500">
+                                            <Calendar size={12} />
+                                        </div>
+                                        <select
+                                            value={selectedMonth}
+                                            onChange={(e) => setSelectedMonth(e.target.value)}
+                                            className="w-full pl-7 pr-4 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-black text-slate-700 outline-none cursor-pointer appearance-none transition-all"
+                                        >
+                                            <optgroup label="2026년">
+                                                <option value="2026-02">2026년 02월</option>
+                                                <option value="2026-01">2026년 01월</option>
+                                            </optgroup>
+                                            <optgroup label="2025년">
+                                                {Array.from({ length: 12 }, (_, i) => 12 - i).map(m => (
+                                                    <option key={m} value={`2025-${m.toString().padStart(2, '0')}`}>2025년 {m.toString().padStart(2, '0')}월</option>
+                                                ))}
+                                            </optgroup>
+                                        </select>
                                     </div>
                                 </div>
 
-                                {/* 실적 모드 토글 */}
-                                <div className="bg-slate-200/50 p-1 rounded-xl">
-                                    <div className="flex gap-1">
+                                {/* 토글 그룹을 가로로 통합 */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="bg-slate-200/40 p-0.5 rounded-lg flex gap-0.5">
                                         <button
                                             onClick={() => setMainTab('current')}
-                                            className={`flex-1 px-4 py-1.5 rounded-lg text-[11px] font-black transition-all whitespace-nowrap ${mainTab === 'current' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                            className={`flex-1 py-1 rounded-md text-[10px] font-black transition-all ${mainTab === 'current' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                                         >
                                             현재실적
                                         </button>
                                         <button
                                             onClick={() => setMainTab('expected')}
-                                            className={`flex-1 px-4 py-1.5 rounded-lg text-[11px] font-black transition-all whitespace-nowrap ${mainTab === 'expected' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                            className={`flex-1 py-1 rounded-md text-[10px] font-black transition-all ${mainTab === 'expected' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                                         >
                                             예상마감
                                         </button>
                                     </div>
-                                </div>
-
-                                {/* 기준 모드 토글 (디자인 통일) */}
-                                <div className="bg-slate-200/50 p-1 rounded-xl">
-                                    <div className="flex gap-1">
+                                    <div className="bg-slate-200/40 p-0.5 rounded-lg flex gap-0.5">
                                         <button
                                             onClick={() => setMetricType('amount')}
-                                            className={`flex-1 px-4 py-1.5 rounded-lg text-[11px] font-black transition-all whitespace-nowrap ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                            className={`flex-1 py-1 rounded-md text-[10px] font-black transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                                         >
-                                            금액 기준
+                                            금액기준
                                         </button>
                                         <button
                                             onClick={() => setMetricType('weight')}
-                                            className={`flex-1 px-4 py-1.5 rounded-lg text-[11px] font-black transition-all whitespace-nowrap ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                            className={`flex-1 py-1 rounded-md text-[10px] font-black transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                                         >
-                                            중량 기준
+                                            중량기준
                                         </button>
                                     </div>
                                 </div>
