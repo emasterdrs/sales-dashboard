@@ -46,7 +46,7 @@ import {
     Pie,
     LabelList
 } from 'recharts';
-import * as xlsx from 'xlsx';
+
 import { saveAs } from 'file-saver';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateStandardSalesData, generateTargetData, generateFullDataset } from './data/generateSalesData';
@@ -266,14 +266,14 @@ export default function App() {
             '마감진도격차(%)': item.progressGap
         }));
 
-        const ws = xlsx.utils.json_to_sheet(wsData);
+        const ws = window.XLSX.utils.json_to_sheet(wsData);
         // 컬럼 크기 약간 넓히기
         ws['!cols'] = Array(12).fill({ wch: 15 });
-        const wb = xlsx.utils.book_new();
-        xlsx.utils.book_append_sheet(wb, ws, `${selectedMonth} 분석결과`);
+        const wb = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb, ws, `${selectedMonth} 분석결과`);
 
         // 가장 안정적인 다운로드 전용 라이브러리 활용
-        const excelBuffer = xlsx.write(wb, { bookType: 'xlsx', type: 'array' });
+        const excelBuffer = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
         saveAs(blob, 'Sales_Dashboard_Data.xlsx');
     };

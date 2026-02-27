@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { Settings, Calendar as CalendarIcon, Users, Package, Building2, Filter, Upload, ChevronRight, Save, Target, Type, Globe } from 'lucide-react';
 import { SETTINGS } from '../data/mockEngine';
-import * as xlsx from 'xlsx';
 
 export function SettingsView({ setMasterData, setLastUpdated }) {
     const salesInputRef = useRef(null);
@@ -15,10 +14,10 @@ export function SettingsView({ setMasterData, setLastUpdated }) {
         reader.onload = (evt) => {
             try {
                 const bstr = evt.target.result;
-                const wb = xlsx.read(bstr, { type: 'binary' });
+                const wb = window.XLSX.read(bstr, { type: 'binary' });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
-                const data = xlsx.utils.sheet_to_json(ws);
+                const data = window.XLSX.utils.sheet_to_json(ws);
 
                 setMasterData(prev => {
                     const newData = { ...prev };
