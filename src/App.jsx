@@ -18,7 +18,18 @@ import {
     X,
     LayoutGrid,
     Globe,
-    ChevronDown
+    ChevronDown,
+    Clock,
+    Filter,
+    BarChart3,
+    Settings2,
+    PieChart as PieChartIcon,
+    Command,
+    Sparkles,
+    Activity,
+    Shield,
+    Layers,
+    Gauge
 } from 'lucide-react';
 import {
     BarChart,
@@ -35,8 +46,10 @@ import {
     Pie,
     LabelList
 } from 'recharts';
+import * as xlsx from 'xlsx';
+import { saveAs } from 'file-saver';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateStandardSalesData, generateTargetData } from './data/generateSalesData';
+import { generateStandardSalesData, generateTargetData, generateFullDataset } from './data/generateSalesData';
 import { SalesBI, SETTINGS } from './data/mockEngine';
 import { Quote } from './components/Quote';
 import { SettingsView } from './components/SettingsView';
@@ -68,31 +81,42 @@ const WEIGHT_UNITS = [
 
 const fPercent = (val) => `${val.toFixed(1)}%`;
 
-// 컴팩트 KPI 카드
+// 컴팩트 KPI 카드 (라이트 테마 최적화)
 function CompactStat({ title, value, detail, icon: Icon, color, trend }) {
     const isPositive = trend >= 0;
+    const colorMap = {
+        indigo: 'bg-indigo-50 text-indigo-600',
+        emerald: 'bg-emerald-50 text-emerald-600',
+        rose: 'bg-rose-50 text-rose-600',
+        amber: 'bg-amber-50 text-amber-600',
+        slate: 'bg-slate-100 text-slate-600',
+        violet: 'bg-violet-50 text-violet-600',
+        blue: 'bg-blue-50 text-blue-600'
+    };
+
     return (
-        <div className="bg-[#0f1220] border border-white/5 rounded-2xl p-4 flex items-center gap-4 hover:border-white/10 transition-all">
-            <div className={`p-2.5 rounded-xl bg-${color}-500/10 text-${color}-400`}>
+        <div className="bg-white border border-slate-200/60 rounded-2xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-all group">
+            <div className={`p-2.5 rounded-xl ${colorMap[color] || colorMap.slate} transition-colors group-hover:scale-110 duration-300`}>
                 <Icon size={18} />
             </div>
             <div>
-                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-tight">{title}</p>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-tight">{title}</p>
                 <div className="flex items-baseline gap-2">
-                    <h3 className="text-lg font-black text-white">{value}</h3>
+                    <h3 className="text-lg font-black text-slate-900">{value}</h3>
                     {trend !== undefined && (
-                        <span className={`text-[10px] font-bold ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        <span className={`text-[10px] font-bold ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
                             {isPositive ? '+' : ''}{trend.toFixed(1)}%
                         </span>
                     )}
                 </div>
-                <p className="text-slate-600 text-[10px] mt-0.5">{detail}</p>
+                <p className="text-slate-400 text-[10px] mt-0.5">{detail}</p>
             </div>
         </div>
     );
 }
 
 export default function App() {
+    const [selectedMonth, setSelectedMonth] = useState('2026-02');
     const [view, setView] = useState('dashboard');
     const [mainTab, setMainTab] = useState('current');
     const [analysisMode, setAnalysisMode] = useState('goal'); // goal, yoy, mom, cumulative, forecast
@@ -102,6 +126,21 @@ export default function App() {
     const [weightUnit, setWeightUnit] = useState('KG');
     const [showAmountDropdown, setShowAmountDropdown] = useState(false);
     const [showWeightDropdown, setShowWeightDropdown] = useState(false);
+    const [fontFamily, setFontFamily] = useState('Gmarket'); // Default to Gmarket as requested
+
+    // 전체 마스터 데이터 상태 관리 (초깃값 샘플 생성)
+    const [masterData, setMasterData] = useState(() => generateFullDataset());
+
+    // 최종 업데이트 시간 상태
+    const [lastUpdated, setLastUpdated] = useState(() => {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+    });
 
     // 동적 매트릭 포맷터 (금액/중량 통합)
     const fMetric = (val) => {
@@ -116,16 +155,32 @@ export default function App() {
             return `${converted.toLocaleString(undefined, { maximumFractionDigits: converted >= 10 ? 0 : 2 })}${config.suffix}`;
         }
     };
-    // 기존 호환성을 위해 유지
     const fCurrency = fMetric;
 
+    const formatDisplayMonth = (ym) => {
+        const [y, m] = ym.split('-');
+        return `${y}년 ${m.padStart(2, '0')}월`;
+    };
+
     const bi = useMemo(() => {
-        const actual = generateStandardSalesData(2026, 2, 9200000000);
-        const target = generateTargetData(2026, 2, 12000000000);
-        const lastYear = generateStandardSalesData(2025, 2, 7800000000);
-        const lastMonth = generateStandardSalesData(2026, 1, 8500000000);
+        const [y, m] = selectedMonth.split('-').map(Number);
+        const ymStr = `${y}${m.toString().padStart(2, '0')}`;
+
+        // 전년 동월 계산
+        const lyStr = `${y - 1}${m.toString().padStart(2, '0')}`;
+
+        // 전월 계산
+        let lmY = y, lmM = m - 1;
+        if (lmM === 0) { lmY = y - 1; lmM = 12; }
+        const lmStr = `${lmY}${lmM.toString().padStart(2, '0')}`;
+
+        const actual = masterData.actual.filter(d => d['년도월'] === ymStr);
+        const target = masterData.target.filter(d => d['년도월'] === ymStr);
+        const lastYear = masterData.actual.filter(d => d['년도월'] === lyStr);
+        const lastMonth = masterData.actual.filter(d => d['년도월'] === lmStr);
+
         return new SalesBI(actual, target, lastYear, lastMonth);
-    }, []);
+    }, [selectedMonth, masterData]);
 
     const summary = bi.getSummary();
     const currentView = path[path.length - 1];
@@ -180,94 +235,195 @@ export default function App() {
         setPath([...path, { level: nextLevel, id: item.id, name: item.name }]);
     };
 
+    const fontMap = {
+        'Pretendard': 'font-style-Pretendard',
+        'Gmarket': 'font-style-Gmarket',
+        'IBM': 'font-style-IBM',
+        'Nanum': 'font-style-Nanum',
+        'Serif': 'font-style-Serif'
+    };
+
+    const iconMap = {
+        dashboard: BarChart3,
+        settings: Settings
+    };
+
+    // 엑셀 다운로드 (분석 데이터 요약 추출)
+    const handleExport = () => {
+        const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const wsData = drillDownData.map(item => ({
+            '분석단위': item.name,
+            '단위결과': metricType === 'amount' ? '금액' : '중량',
+            '현실적': item.actual,
+            '목표금액': item.target,
+            '달성률(%)': item.achievement,
+            '전년동기': item.lastYear,
+            'YOY성장(%)': item.yoy,
+            '전월실적': item.lastMonth,
+            'MOM성장(%)': item.mom,
+            '당월예상마감': item.forecastAmt,
+            '예상달성률(%)': item.forecastAchievement,
+            '마감진도격차(%)': item.progressGap
+        }));
+
+        const ws = xlsx.utils.json_to_sheet(wsData);
+        // 컬럼 크기 약간 넓히기
+        ws['!cols'] = Array(12).fill({ wch: 15 });
+        const wb = xlsx.utils.book_new();
+        xlsx.utils.book_append_sheet(wb, ws, `${selectedMonth} 분석결과`);
+
+        // 가장 안정적인 다운로드 전용 라이브러리 활용
+        const excelBuffer = xlsx.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+        saveAs(blob, 'Sales_Dashboard_Data.xlsx');
+    };
+
     return (
-        <div className="min-h-screen bg-[#070914] text-slate-300 flex flex-col md:flex-row overflow-x-hidden font-sans pb-20 md:pb-0">
+        <div
+            className={`min-h-screen bg-[#f8fafc] text-slate-600 flex flex-col md:flex-row overflow-x-hidden pb-20 md:pb-0 shadow-inner ${fontMap[fontFamily]}`}
+        >
             {/* Sidebar - Desktop Only */}
-            <aside className="hidden md:flex w-16 bg-[#0a0c1a] border-r border-white/5 flex-col items-center py-6 z-50 h-screen sticky top-0">
-                <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white mb-10 shadow-lg shadow-indigo-600/20">
-                    <Zap size={20} fill="currentColor" />
+            <aside className="hidden md:flex w-64 bg-white border-r border-slate-200/60 flex-col py-10 z-50 h-screen sticky top-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)] px-6">
+                {/* 로고 영역 - 엔터프라이즈 감성 */}
+                <div className="flex items-center gap-4 px-2 mb-16">
+                    <div className="flex flex-col justify-center">
+                        <span className="text-xl font-black text-slate-900 tracking-tighter leading-none">영업 대시보드</span>
+                    </div>
                 </div>
-                <div className="flex-1 space-y-8">
-                    <SidebarIcon active={view === 'dashboard'} icon={LayoutDashboard} onClick={() => setView('dashboard')} />
-                    <SidebarIcon active={view === 'receivables'} icon={CreditCard} onClick={() => setView('receivables')} />
-                    <SidebarIcon active={view === 'settings'} icon={Settings} onClick={() => setView('settings')} />
+
+                <nav className="flex-1">
+                    <div className="space-y-2">
+                        <SidebarIcon active={view === 'dashboard'} icon={iconMap.dashboard} label="매출 실적" onClick={() => setView('dashboard')} />
+                        <SidebarIcon active={view === 'settings'} icon={iconMap.settings} label="설정" onClick={() => setView('settings')} />
+                    </div>
+                </nav>
+
+                {/* 하단 미니 위젯/아이콘 (디테일 추가) */}
+                <div className="pt-8 mt-8 border-t border-slate-100 px-2">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                            <Sparkles size={14} />
+                        </div>
+                        <div className="flex flex-col overflow-hidden">
+                            <span className="text-[10px] font-black text-slate-800 truncate leading-tight tracking-tighter">Premium Plan</span>
+                            <span className="text-[9px] font-bold text-slate-400">Enterprise AI</span>
+                        </div>
+                    </div>
                 </div>
             </aside>
 
-            {/* 메인 뷰포트 - 스크롤 억제 및 그리드 배치 */}
+            {/* 메인 뷰포트 */}
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
                 {/* 상단 통합 제어바 */}
-                <header className="py-6 px-4 md:py-10 md:px-10 border-b border-white/5 bg-gradient-to-b from-[#0a0c1a] to-transparent">
-                    <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 md:gap-8 mb-6 md:mb-8">
+                <header className="py-4 px-4 md:py-6 md:px-10 border-b border-slate-200 bg-white">
+                    <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 md:gap-6 mb-2 md:mb-4">
                         <div className="flex-1 min-w-0 w-full">
                             <div className="flex items-center gap-2 mb-2 md:mb-4">
-                                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                                <span className="text-indigo-400 text-[10px] md:text-xs font-black uppercase tracking-widest">Live Analysis System</span>
+                                <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                                <span className="text-indigo-600 text-[10px] md:text-xs font-black uppercase tracking-widest">Sales Data Performance</span>
                             </div>
-                            <h1 className="text-2xl md:text-5xl font-black text-white tracking-tighter italic mb-2 md:mb-3 leading-tight">
-                                2026년 2월 <span className={mainTab === 'expected' ? 'text-indigo-400' : 'text-emerald-400'}>
+                            <h1 className="text-2xl md:text-5xl font-black text-slate-900 tracking-tighter italic mb-2 md:mb-3 leading-tight">
+                                {formatDisplayMonth(selectedMonth)} <span className={mainTab === 'expected' ? 'text-indigo-600' : 'text-emerald-500'}>
                                     {mainTab === 'expected' ? '예상마감 실적' : '매출 실적'}
                                 </span>
                             </h1>
-                            <div className="flex items-center gap-4 text-slate-400 font-bold text-xs md:text-sm px-1">
-                                <span className="flex items-center gap-1.5"><Calendar size={14} className="text-indigo-400 md:size-4" /> 매출 기준일: 2026.02.24</span>
+                            <div className="flex items-center gap-4 text-slate-400 font-bold text-xs md:text-[11px] px-1 uppercase tracking-wider">
+                                <span className="flex items-center gap-1.5">
+                                    <Clock size={12} className="text-indigo-400" />
+                                    최종 업데이트: {lastUpdated}
+                                </span>
+                                <button onClick={handleExport} className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white px-3 py-1.5 rounded-lg transition-all duration-300 border border-indigo-200 hover:border-indigo-600 ml-2 group">
+                                    <Download size={14} className="group-hover:animate-bounce" />
+                                    <span>엑셀 다운로드</span>
+                                </button>
                             </div>
                         </div>
 
                         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 md:gap-6 shrink-0 w-full md:w-auto">
                             {/* 영업 진도 요약 미니 표 - 우측 배치 */}
-                            <div className="overflow-x-auto no-scrollbar rounded-xl border border-white/10 bg-[#0f1220]/80 shadow-2xl transition-all hover:border-indigo-500/30">
+                            <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition-all hover:border-indigo-500/30">
                                 <table className="text-[10px] md:text-[11px] leading-tight min-w-full">
-                                    <thead className="bg-white/[0.05] border-b border-white/10">
-                                        <tr className="text-slate-400 font-bold uppercase tracking-tighter whitespace-nowrap">
-                                            <th className="px-3 md:px-5 py-2 md:py-2.5 border-r border-white/10">영업일</th>
-                                            <th className="px-3 md:px-5 py-2 md:py-2.5 border-r border-white/10">총 영업일</th>
-                                            <th className="px-3 md:px-5 py-2 md:py-2.5 text-indigo-300 font-black">진도율</th>
+                                    <thead className="bg-slate-100 border-b border-slate-200">
+                                        <tr className="text-slate-500 font-bold uppercase tracking-tighter whitespace-nowrap">
+                                            <th className="px-3 md:px-5 py-2 md:py-2.5 border-r border-slate-200">영업일</th>
+                                            <th className="px-3 md:px-5 py-2 md:py-2.5 border-r border-slate-200">총 영업일</th>
+                                            <th className="px-3 md:px-5 py-2 md:py-2.5 text-indigo-600 font-black">진도율</th>
                                             <th className="px-3 md:px-5 py-2 md:py-2.5">1일 평균</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-center font-black">
                                         <tr>
-                                            <td className="px-3 md:px-5 py-2 md:py-3 text-white text-lg md:text-xl border-r border-white/10">{SETTINGS.currentBusinessDay}</td>
-                                            <td className="px-3 md:px-5 py-2 md:py-3 text-slate-300 text-lg md:text-xl border-r border-white/10">{SETTINGS.businessDays['2026-02']}</td>
-                                            <td className="px-3 md:px-5 py-2 md:py-3 text-indigo-400 border-r border-white/10 text-xl md:text-2xl tracking-tighter">{((SETTINGS.currentBusinessDay / SETTINGS.businessDays['2026-02']) * 100).toFixed(1)}%</td>
+                                            <td className="px-3 md:px-5 py-2 md:py-3 text-slate-900 text-lg md:text-xl border-r border-slate-200">{SETTINGS.currentBusinessDay}</td>
+                                            <td className="px-3 md:px-5 py-2 md:py-3 text-slate-500 text-lg md:text-xl border-r border-slate-200">{SETTINGS.businessDays['2026-02']}</td>
+                                            <td className="px-3 md:px-5 py-2 md:py-3 text-indigo-600 border-r border-slate-200 text-xl md:text-2xl tracking-tighter">{((SETTINGS.currentBusinessDay / SETTINGS.businessDays['2026-02']) * 100).toFixed(1)}%</td>
                                             <td className="px-3 md:px-5 py-2 md:py-3 text-slate-400 text-[10px] md:text-sm font-mono">{(100 / SETTINGS.businessDays['2026-02']).toFixed(1)}%</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
 
-                            <div className="flex flex-col gap-4 shrink-0 w-full sm:w-[320px]">
-                                {/* 상단: 실적 모드 토글 */}
-                                <div className="bg-[#0f1220] p-1 rounded-xl border border-white/10 shadow-2xl">
-                                    <div className="flex bg-white/5 p-0.5 rounded-lg">
+                            <div className="flex flex-col gap-3 shrink-0 w-full sm:w-[320px] bg-slate-50/50 p-3 rounded-[24px] border border-slate-200/60 shadow-inner">
+                                {/* 헤더: 분석 조건 설정 (아이콘 추가) */}
+                                <div className="flex items-center gap-2 px-2 mb-1">
+                                    <Filter size={12} className="text-indigo-500" />
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Analysis Filters</span>
+                                </div>
+
+                                {/* 월 선택 드롭다운 (이동됨) */}
+                                <div className="relative group">
+                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-500 group-hover:scale-110 transition-transform">
+                                        <Calendar size={14} />
+                                    </div>
+                                    <select
+                                        value={selectedMonth}
+                                        onChange={(e) => setSelectedMonth(e.target.value)}
+                                        className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[11px] font-black text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer shadow-sm appearance-none transition-all"
+                                    >
+                                        <optgroup label="2026년">
+                                            <option value="2026-02">2026년 02월</option>
+                                            <option value="2026-01">2026년 01월</option>
+                                        </optgroup>
+                                        <optgroup label="2025년">
+                                            {Array.from({ length: 12 }, (_, i) => 12 - i).map(m => (
+                                                <option key={m} value={`2025-${m.toString().padStart(2, '0')}`}>2025년 {m.toString().padStart(2, '0')}월</option>
+                                            ))}
+                                        </optgroup>
+                                    </select>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                        <ChevronDown size={12} />
+                                    </div>
+                                </div>
+
+                                {/* 실적 모드 토글 */}
+                                <div className="bg-slate-200/50 p-1 rounded-xl">
+                                    <div className="flex gap-1">
                                         <button
                                             onClick={() => setMainTab('current')}
-                                            className={`flex-1 px-4 py-1.5 rounded-md text-[11px] font-black transition-all whitespace-nowrap ${mainTab === 'current' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                                            className={`flex-1 px-4 py-1.5 rounded-lg text-[11px] font-black transition-all whitespace-nowrap ${mainTab === 'current' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                         >
                                             현재실적
                                         </button>
                                         <button
                                             onClick={() => setMainTab('expected')}
-                                            className={`flex-1 px-4 py-1.5 rounded-md text-[11px] font-black transition-all whitespace-nowrap ${mainTab === 'expected' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                                            className={`flex-1 px-4 py-1.5 rounded-lg text-[11px] font-black transition-all whitespace-nowrap ${mainTab === 'expected' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                         >
                                             예상마감
                                         </button>
                                     </div>
                                 </div>
 
-                                {/* 중간: 기준 모드 토글 (디자인 통일) */}
-                                <div className="bg-[#0f1220] p-1 rounded-xl border border-white/10 shadow-2xl">
-                                    <div className="flex bg-white/5 p-0.5 rounded-lg">
+                                {/* 기준 모드 토글 (디자인 통일) */}
+                                <div className="bg-slate-200/50 p-1 rounded-xl">
+                                    <div className="flex gap-1">
                                         <button
                                             onClick={() => setMetricType('amount')}
-                                            className={`flex-1 px-4 py-1.5 rounded-md text-[11px] font-black transition-all whitespace-nowrap ${metricType === 'amount' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                                            className={`flex-1 px-4 py-1.5 rounded-lg text-[11px] font-black transition-all whitespace-nowrap ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                         >
                                             금액 기준
                                         </button>
                                         <button
                                             onClick={() => setMetricType('weight')}
-                                            className={`flex-1 px-4 py-1.5 rounded-md text-[11px] font-black transition-all whitespace-nowrap ${metricType === 'weight' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                                            className={`flex-1 px-4 py-1.5 rounded-lg text-[11px] font-black transition-all whitespace-nowrap ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                         >
                                             중량 기준
                                         </button>
@@ -285,13 +441,13 @@ export default function App() {
                                                 setShowAmountDropdown(!showAmountDropdown);
                                                 setShowWeightDropdown(false);
                                             }}
-                                            className={`flex items-center justify-between w-full px-2 py-1.5 rounded-md bg-white/5 border text-[9px] font-bold transition-all ${metricType === 'amount' ? 'border-indigo-500/30 text-white' : 'border-white/5 text-slate-500'}`}
+                                            className={`flex items-center justify-between w-full px-2 py-1.5 rounded-md bg-white border text-[9px] font-bold transition-all ${metricType === 'amount' ? 'border-indigo-500/30 text-indigo-600' : 'border-slate-200 text-slate-400'}`}
                                         >
                                             <span className="truncate">{CURRENCY_UNITS.find(u => u.key === amountUnit)?.label}</span>
-                                            <ChevronDown size={8} className={`text-indigo-400 transition-transform ${showAmountDropdown ? 'rotate-180' : ''}`} />
+                                            <ChevronDown size={8} className={`text-indigo-500 transition-transform ${showAmountDropdown ? 'rotate-180' : ''}`} />
                                         </button>
                                         {showAmountDropdown && (
-                                            <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0c1a] border border-white/10 rounded-lg shadow-2xl z-[100] py-1">
+                                            <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-[100] py-1">
                                                 {CURRENCY_UNITS.map(unit => (
                                                     <button
                                                         key={unit.key}
@@ -301,7 +457,7 @@ export default function App() {
                                                             setMetricType('amount');
                                                             setShowAmountDropdown(false);
                                                         }}
-                                                        className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${amountUnit === unit.key ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                                                        className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${amountUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
                                                     >
                                                         {unit.label}
                                                     </button>
@@ -319,13 +475,13 @@ export default function App() {
                                                 setShowWeightDropdown(!showWeightDropdown);
                                                 setShowAmountDropdown(false);
                                             }}
-                                            className={`flex items-center justify-between w-full px-2 py-1.5 rounded-md bg-white/5 border text-[9px] font-bold transition-all ${metricType === 'weight' ? 'border-indigo-500/30 text-white' : 'border-white/5 text-slate-500'}`}
+                                            className={`flex items-center justify-between w-full px-2 py-1.5 rounded-md bg-white border text-[9px] font-bold transition-all ${metricType === 'weight' ? 'border-indigo-500/30 text-indigo-600' : 'border-slate-200 text-slate-400'}`}
                                         >
                                             <span className="truncate">{WEIGHT_UNITS.find(u => u.key === weightUnit)?.label}</span>
-                                            <ChevronDown size={8} className={`text-indigo-400 transition-transform ${showWeightDropdown ? 'rotate-180' : ''}`} />
+                                            <ChevronDown size={8} className={`text-indigo-500 transition-transform ${showWeightDropdown ? 'rotate-180' : ''}`} />
                                         </button>
                                         {showWeightDropdown && (
-                                            <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0c1a] border border-white/10 rounded-lg shadow-2xl z-[100] py-1">
+                                            <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-[100] py-1">
                                                 {WEIGHT_UNITS.map(unit => (
                                                     <button
                                                         key={unit.key}
@@ -335,7 +491,7 @@ export default function App() {
                                                             setMetricType('weight');
                                                             setShowWeightDropdown(false);
                                                         }}
-                                                        className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${weightUnit === unit.key ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                                                        className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${weightUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
                                                     >
                                                         {unit.label}
                                                     </button>
@@ -348,24 +504,24 @@ export default function App() {
                         </div>
                     </div>
 
-                    {path.length > 1 && (
-                        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-2 bg-white/5 px-4 rounded-xl border border-white/5 self-start">
+                    {path.length > 1 ? (
+                        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-2 bg-slate-50 px-4 rounded-xl border border-slate-200 self-start mx-10 mt-[-20px] mb-6 shadow-sm">
                             {path.map((p, i) => (
-                                <button key={i} onClick={() => setPath(path.slice(0, i + 1))} className={`text-[11px] font-bold px-3 py-1 color transition-all flex items-center gap-2 ${i === path.length - 1 ? 'text-white' : 'text-slate-500 hover:text-slate-400'}`}>
+                                <button key={i} onClick={() => setPath(path.slice(0, i + 1))} className={`text-[11px] font-bold px-3 py-1 transition-all flex items-center gap-2 ${i === path.length - 1 ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
                                     {p.name}
-                                    {i < path.length - 1 && <ChevronRight size={10} className="text-slate-700" />}
+                                    {i < path.length - 1 && <ChevronRight size={10} className="text-slate-300" />}
                                 </button>
                             ))}
                         </div>
-                    )}
+                    ) : null}
                 </header>
 
-                <main className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-6 bg-[#070914] md:max-h-screen">
-                    {view === 'settings' ? <SettingsView /> : (
-                        <div className="max-w-[1600px] mx-auto space-y-8">
+                <main className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-4 bg-[#f8fafc] md:max-h-screen">
+                    {view === 'settings' ? <SettingsView setMasterData={setMasterData} masterData={masterData} setLastUpdated={setLastUpdated} fontFamily={fontFamily} setFontFamily={setFontFamily} fontMap={fontMap} /> : (
+                        <div className="max-w-[1600px] mx-auto space-y-4">
                             {/* 분석 모드 탭 내비게이션 (임원진용 대형 탭) */}
                             <div className="overflow-x-auto no-scrollbar pb-1">
-                                <div className="flex bg-[#0a0c1a] p-1 rounded-2xl border border-white/10 w-fit shadow-2xl min-w-full sm:min-w-0">
+                                <div className="flex bg-white p-1.5 rounded-2xl border border-slate-200 w-fit shadow-sm min-w-full sm:min-w-0">
                                     {[
                                         { id: 'goal', name: '목표대비' },
                                         { id: 'yoy', name: '전년대비' },
@@ -376,7 +532,7 @@ export default function App() {
                                         <button
                                             key={tab.id}
                                             onClick={() => setAnalysisMode(tab.id)}
-                                            className={`px-4 md:px-10 py-2.5 md:py-3.5 rounded-xl text-xs md:text-base font-black transition-all whitespace-nowrap ${analysisMode === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40' : 'text-slate-500 hover:text-slate-300'}`}
+                                            className={`px-4 md:px-10 py-2.5 md:py-3.5 rounded-xl text-xs md:text-base font-black transition-all whitespace-nowrap ${analysisMode === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-slate-600'}`}
                                         >
                                             {tab.name}
                                         </button>
@@ -432,26 +588,26 @@ export default function App() {
                             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
                                 {/* 좌측 분석 섹션 (차트 + 테이블) */}
                                 <div className="xl:col-span-3 space-y-6">
-                                    <div className="bg-[#0a0c1a] border border-white/5 rounded-[24px] overflow-hidden">
-                                        <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
-                                            <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                                                <TrendingUp size={16} className="text-indigo-400" />
+                                    <div className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm">
+                                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                                <TrendingUp size={16} className="text-indigo-600" />
                                                 {analysisMode === 'goal' ? '목표 대비 달성률 집계' :
                                                     analysisMode === 'yoy' ? '전년 대비 성장률 집계' :
                                                         analysisMode === 'mom' ? '전월 대비 성장률 집계' : '누계 실적 집계'}
                                             </h3>
-                                            <div className="flex bg-[#0f1220] p-0.5 rounded-lg scale-90">
-                                                <button onClick={() => setMetricType('amount')} className={`px-3 py-1 rounded-md text-[10px] font-bold ${metricType === 'amount' ? 'bg-indigo-500/10 text-indigo-400' : 'text-slate-600'}`}>금액</button>
-                                                <button onClick={() => setMetricType('weight')} className={`px-3 py-1 rounded-md text-[10px] font-bold ${metricType === 'weight' ? 'bg-indigo-500/10 text-indigo-400' : 'text-slate-600'}`}>중량</button>
+                                            <div className="flex bg-slate-100 p-0.5 rounded-lg scale-90 border border-slate-200">
+                                                <button onClick={() => setMetricType('amount')} className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
+                                                <button onClick={() => setMetricType('weight')} className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>중량</button>
                                             </div>
                                         </div>
                                         <div className="p-6 h-[340px]">
                                             <ResponsiveContainer>
                                                 <BarChart data={drillDownData} onClick={(data) => data && handleDrillDown(data.activePayload[0].payload)}>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.02)" vertical={false} />
-                                                    <XAxis dataKey="name" stroke="#475569" fontSize={10} fontWeight={800} tickLine={false} axisLine={false} dy={10} />
-                                                    <YAxis stroke="#475569" fontSize={9} tickLine={false} axisLine={false} unit="%" />
-                                                    <Tooltip contentStyle={{ backgroundColor: '#0a0c1a', border: '1px solid #1e293b', borderRadius: '12px', fontSize: '11px' }} />
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                                    <XAxis dataKey="name" stroke="#64748b" fontSize={10} fontWeight={800} tickLine={false} axisLine={false} dy={10} />
+                                                    <YAxis stroke="#64748b" fontSize={9} tickLine={false} axisLine={false} unit="%" />
+                                                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '11px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                                                     <Bar dataKey={analysisMode === 'goal' ? 'achievement' :
                                                         analysisMode === 'yoy' ? 'yoy' :
                                                             analysisMode === 'mom' ? 'mom' :
@@ -459,7 +615,7 @@ export default function App() {
                                                         name={analysisMode === 'goal' ? '달성률' : analysisMode === 'forecast' ? '예상달성률' : '성장률'}
                                                         radius={[8, 8, 0, 0]} barSize={40} cursor="pointer">
                                                         {drillDownData.map((e, i) => (
-                                                            <Cell key={i} fill={TEAM_COLORS[e.name]?.main || TEAM_COLORS['전체'].main} opacity={0.9} />
+                                                            <Cell key={i} fill={TEAM_COLORS[e.name]?.main || TEAM_COLORS['전체'].main} opacity={0.8} />
                                                         ))}
                                                         <LabelList
                                                             dataKey={analysisMode === 'goal' ? 'progressGap' :
@@ -476,14 +632,14 @@ export default function App() {
                                     </div>
 
                                     {/* 상세 데이터 테이블 */}
-                                    <div className="bg-[#0a0c1a] border border-white/5 rounded-[24px] overflow-hidden">
-                                        <div className="px-6 py-4 border-b border-white/5 bg-white/[0.01]">
-                                            <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Detail Breakdown</h3>
+                                    <div className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm">
+                                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                                            <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Detail Breakdown</h3>
                                         </div>
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-left text-[11px] table-fixed">
                                                 <thead>
-                                                    <tr className="text-slate-600 font-bold border-b border-white/5 bg-[#0f1220]/30 text-[10px]">
+                                                    <tr className="text-slate-500 font-bold border-b border-slate-100 bg-slate-50/30 text-[10px]">
                                                         <th className="py-3 px-6 w-1/4">구분</th>
                                                         {analysisMode === 'goal' ? (
                                                             <>
@@ -516,25 +672,25 @@ export default function App() {
                                                         )}
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-white/[0.03]">
+                                                <tbody className="divide-y divide-slate-100">
                                                     {drillDownData.map((item, i) => (
-                                                        <tr key={i} onClick={() => handleDrillDown(item)} className="hover:bg-indigo-500/[0.03] transition-colors cursor-pointer group">
-                                                            <td className="py-4 px-6 font-black text-white group-hover:text-indigo-400 transition-colors uppercase tracking-tight truncate">
-                                                                <span className="inline-block w-1 h-3 rounded-full mr-3" style={{ background: TEAM_COLORS[item.name]?.main || '#334155' }} />
+                                                        <tr key={i} onClick={() => handleDrillDown(item)} className="hover:bg-slate-50 transition-colors cursor-pointer group">
+                                                            <td className="py-4 px-6 font-black text-slate-800 group-hover:text-indigo-600 transition-colors uppercase tracking-tight truncate">
+                                                                <span className="inline-block w-1.5 h-4 rounded-full mr-3" style={{ background: TEAM_COLORS[item.name]?.main || '#e2e8f0' }} />
                                                                 {item.name}
                                                             </td>
-                                                            <td className="py-4 font-mono text-white text-right">
+                                                            <td className="py-4 font-mono text-slate-700 text-right">
                                                                 {fCurrency(analysisMode === 'cumulative' ? item.cumulativeActual : analysisMode === 'forecast' ? item.forecastAmt : item.actual)}
                                                             </td>
-                                                            <td className="py-4 font-mono text-slate-500 text-right">
+                                                            <td className="py-4 font-mono text-slate-400 text-right">
                                                                 {fCurrency(analysisMode === 'yoy' ? item.lastYear : analysisMode === 'mom' ? item.lastMonth : analysisMode === 'cumulative' ? item.cumulativeTarget : item.target)}
                                                             </td>
                                                             <td className="py-4 px-4 text-center">
-                                                                <span className="font-black text-white">
+                                                                <span className="font-bold text-slate-900">
                                                                     {fPercent(analysisMode === 'yoy' ? item.yoy : analysisMode === 'mom' ? item.mom : analysisMode === 'cumulative' ? (item.cumulativeActual / (item.cumulativeTarget || 1) * 100) : analysisMode === 'forecast' ? item.forecastAchievement : item.achievement)}
                                                                 </span>
                                                             </td>
-                                                            <td className={`py-4 pr-6 font-mono text-right font-black ${item.progressGap >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                            <td className={`py-4 pr-6 font-mono text-right font-black ${item.progressGap >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                                                 {analysisMode === 'goal' ? (item.progressGap > 0 ? `+${item.progressGap.toFixed(1)}%p` : `${item.progressGap.toFixed(1)}%p`) :
                                                                     analysisMode === 'yoy' ? fCurrency(item.actual - item.lastYear) :
                                                                         analysisMode === 'mom' ? fCurrency(item.actual - item.lastMonth) :
@@ -551,15 +707,15 @@ export default function App() {
                                 {/* 우측 위젯 컬럼 */}
                                 <div className="space-y-6">
                                     {/* 점유율 위젯 */}
-                                    <div className="bg-[#0a0c1a] border border-white/5 rounded-[24px] p-6 shadow-xl">
-                                        <h3 className="text-xs font-black text-white italic mb-6">Market Share</h3>
+                                    <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
+                                        <h3 className="text-xs font-black text-slate-800 italic mb-6">Market Share</h3>
                                         <div className="h-[200px]">
                                             <ResponsiveContainer>
                                                 <PieChart>
-                                                    <Pie data={drillDownData.slice(0, 5)} dataKey="actual" cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={8} stroke="none">
-                                                        {drillDownData.map((e, i) => <Cell key={i} fill={TEAM_COLORS[e.name]?.main || '#1e293b'} />)}
+                                                    <Pie data={drillDownData.slice(0, 5)} dataKey="actual" cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={8} stroke="#fff" strokeWidth={2}>
+                                                        {drillDownData.map((e, i) => <Cell key={i} fill={TEAM_COLORS[e.name]?.main || '#e2e8f0'} />)}
                                                     </Pie>
-                                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', background: '#0a0c1a', fontSize: '10px' }} />
+                                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', background: '#fff', fontSize: '10px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                                                 </PieChart>
                                             </ResponsiveContainer>
                                         </div>
@@ -567,28 +723,28 @@ export default function App() {
                                             {drillDownData.slice(0, 4).map((item, i) => (
                                                 <div key={i} className="flex items-center justify-between text-[10px]">
                                                     <div className="flex items-center gap-2">
-                                                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: TEAM_COLORS[item.name]?.main || '#334155' }} />
-                                                        <span className="font-bold text-slate-500">{item.name}</span>
+                                                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: TEAM_COLORS[item.name]?.main || '#e2e8f0' }} />
+                                                        <span className="font-bold text-slate-400">{item.name}</span>
                                                     </div>
-                                                    <span className="font-black text-white">{((item.actual / summary.actual) * 100).toFixed(1)}%</span>
+                                                    <span className="font-black text-slate-800">{((item.actual / summary.actual) * 100).toFixed(1)}%</span>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
 
-                                    {/* 기업 연간 목표 위젯 */}
-                                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/5 rounded-[24px] p-6 text-white relative overflow-hidden group">
-                                        <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform" />
-                                        <Globe size={40} className="absolute bottom-2 right-2 opacity-10" />
-                                        <h4 className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Company Annual Goal</h4>
-                                        <p className="text-2xl font-black tracking-tighter mb-4">Target 2026</p>
+                                    {/* 기업 연간 목표 위젯 - 라이트 테마 최적화 */}
+                                    <div className="bg-white border border-slate-200 rounded-[24px] p-6 text-slate-800 relative overflow-hidden group shadow-sm hover:shadow-md transition-all">
+                                        <div className="absolute -top-6 -right-6 w-24 h-24 bg-indigo-50 rounded-full blur-2xl group-hover:scale-150 transition-transform" />
+                                        <Globe size={40} className="absolute bottom-2 right-2 text-indigo-100" />
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Company Annual Goal</h4>
+                                        <p className="text-2xl font-black tracking-tighter text-slate-900 mb-4">Target 2026</p>
                                         <div className="space-y-2">
                                             <div className="flex justify-between text-[10px] font-bold">
-                                                <span>Yearly Progress</span>
-                                                <span>31.4%</span>
+                                                <span className="text-slate-500">Yearly Progress</span>
+                                                <span className="text-indigo-600">31.4%</span>
                                             </div>
-                                            <div className="h-1.5 bg-black/20 rounded-full overflow-hidden">
-                                                <div className="h-full bg-white shadow-xl" style={{ width: '31.4%' }} />
+                                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                <div className="h-full bg-indigo-600 rounded-full shadow-lg shadow-indigo-600/30" style={{ width: '31.4%' }} />
                                             </div>
                                         </div>
                                     </div>
@@ -601,21 +757,45 @@ export default function App() {
                 </main>
 
                 {/* Mobile Bottom Navigation */}
-                <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] bg-[#0a0c1a]/80 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 flex items-center justify-around shadow-2xl z-50">
-                    <SidebarIcon active={view === 'dashboard'} icon={LayoutDashboard} onClick={() => setView('dashboard')} />
-                    <SidebarIcon active={view === 'receivables'} icon={CreditCard} onClick={() => setView('receivables')} />
-                    <SidebarIcon active={view === 'settings'} icon={Settings} onClick={() => setView('settings')} />
+                <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[85%] bg-white/95 backdrop-blur-3xl border border-slate-200 rounded-[24px] p-2.5 flex items-center justify-around shadow-2xl z-50 ring-1 ring-slate-900/5">
+                    <SidebarIcon active={view === 'dashboard'} icon={BarChart3} label="매출 실적" onClick={() => setView('dashboard')} color="indigo" />
+                    <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={() => setView('settings')} color="slate" />
                 </nav>
             </div>
         </div>
     );
 }
 
-// 사이드바 아이콘 컴포넌트
-function SidebarIcon({ active, icon: Icon, onClick }) {
+function SidebarIcon({ active, icon: Icon, label, onClick }) {
     return (
-        <button onClick={onClick} className={`p-3 md:p-2.5 rounded-xl transition-all ${active ? 'bg-white/10 text-indigo-400' : 'text-slate-600 hover:text-slate-400'}`}>
-            <Icon size={20} className="md:size-5" />
+        <button
+            onClick={onClick}
+            className={`flex items-center gap-4 w-full px-4 py-4 rounded-[22px] transition-all duration-300 group relative ${active
+                ? 'bg-white shadow-[0_10px_25px_-4px_rgba(99,102,241,0.12)] ring-1 ring-slate-100'
+                : 'text-slate-400 hover:text-slate-900 hover:bg-slate-50/50'
+                }`}
+        >
+            <div className={`p-2.5 rounded-[16px] transition-all duration-500 shadow-sm ${active
+                ? 'bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/40 scale-110'
+                : 'bg-slate-50 text-slate-400 group-hover:bg-white group-hover:text-indigo-500 group-hover:shadow-md'
+                }`}>
+                <Icon size={20} />
+            </div>
+            <span className={`text-[14px] font-bold tracking-tight transition-colors whitespace-nowrap ${active ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-700'}`}>
+                {label}
+            </span>
+            {active && (
+                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.8)]" />
+            )}
+
+            {/* Hover Decorator */}
+            {!active && (
+                <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    whileHover={{ opacity: 1, x: 0 }}
+                    className="absolute left-0 w-1 h-6 bg-indigo-500/20 rounded-r-full"
+                />
+            )}
         </button>
     );
 }

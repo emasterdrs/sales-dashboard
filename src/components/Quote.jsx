@@ -23,10 +23,10 @@ export function Quote() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5, duration: 0.8 }}
-            className="max-w-xl mx-auto text-center mt-8 p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 hover:bg-white/10 transition-colors"
+            className="max-w-xl mx-auto text-center mt-8 p-6 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all group"
         >
-            <p className="text-lg md:text-xl font-light italic text-slate-300 mb-3">"{quote.text}"</p>
-            <span className="text-sm font-medium text-slate-400 block">— {quote.author}</span>
+            <p className="text-lg md:text-xl font-medium italic text-slate-700 mb-3 group-hover:text-indigo-600 transition-colors">"{quote.text}"</p>
+            <span className="text-sm font-bold text-slate-400 block tracking-tight uppercase">— {quote.author}</span>
         </motion.div>
     );
 }

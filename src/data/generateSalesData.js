@@ -84,6 +84,35 @@ export function generateTargetData(year, month, totalTarget) {
 }
 
 /**
+ * 전 기간 데이터셋 생성 (2025-01 ~ 2026-02)
+ * 2025년 월평균 실적: 약 300억 준
+ * 2026년 월평균 목표/실적: 약 400억 수준
+ */
+export function generateFullDataset() {
+    const months = [
+        { year: 2025, range: [1, 12], avg: 31000000000 },
+        { year: 2026, range: [1, 2], avg: 42000000000 }
+    ];
+
+    const fullActual = [];
+    const fullTarget = [];
+
+    months.forEach(period => {
+        for (let m = period.range[0]; m <= period.range[1]; m++) {
+            // 실제 실적은 평균에서 ±15% 변동 부여
+            const monthlyActual = period.avg * (0.85 + Math.random() * 0.3);
+            // 목표는 평균에서 ±5% 변동 부여
+            const monthlyTarget = period.avg * (0.95 + Math.random() * 0.1);
+
+            fullActual.push(...generateStandardSalesData(period.year, m, monthlyActual));
+            fullTarget.push(...generateTargetData(period.year, m, monthlyTarget));
+        }
+    });
+
+    return { actual: fullActual, target: fullTarget };
+}
+
+/**
  * CSV 변환 함수
  */
 export function convertToCSV(data) {
