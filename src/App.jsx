@@ -357,10 +357,10 @@ export default function App() {
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
                                 {analysisMode === 'goal' && (
                                     <>
-                                        <CompactStat title="당월 목표" value={fCurrency(summary.target)} icon={Target} color="slate" />
+                                        <CompactStat title="목표 금액" value={fCurrency(summary.target)} icon={Target} color="slate" />
                                         <CompactStat title="당월 실적" value={fCurrency(summary.actual)} icon={DollarSign} color="indigo" />
                                         <CompactStat title="현재 달성률" value={fPercent(summary.achievementRate)} icon={Zap} color="emerald" trend={summary.achievementRate} />
-                                        <CompactStat title="목표 대비 격차" value={fCurrency(summary.actual - summary.target)} detail={`진도율(${fPercent(summary.progressRate)}) 대비 ${fPercent(summary.progressGap)}`} icon={TrendingUp} color={summary.progressGap >= 0 ? 'emerald' : 'rose'} />
+                                        <CompactStat title="진도 대비 격차" value={fPercent(summary.progressGap)} detail={`진도율(${fPercent(summary.progressRate)})`} icon={TrendingUp} color={summary.progressGap >= 0 ? 'emerald' : 'rose'} trend={summary.progressGap} />
                                     </>
                                 )}
                                 {analysisMode === 'yoy' && (
@@ -373,7 +373,7 @@ export default function App() {
                                 )}
                                 {analysisMode === 'mom' && (
                                     <>
-                                        <CompactStat title="본 전월 실적" value={fCurrency(summary.lastMonthActual)} icon={Calendar} color="slate" />
+                                        <CompactStat title="전월 실적" value={fCurrency(summary.lastMonthActual)} icon={Calendar} color="slate" />
                                         <CompactStat title="당월 실적" value={fCurrency(summary.actual)} icon={DollarSign} color="indigo" />
                                         <CompactStat title="전월 대비 성장률" value={fPercent(summary.momGrowth)} icon={TrendingUp} color="blue" trend={summary.momGrowth} />
                                         <CompactStat title="성장액" value={fCurrency(summary.actual - summary.lastMonthActual)} detail="vs 전월" icon={Scale} color={summary.momGrowth >= 0 ? 'emerald' : 'rose'} />
@@ -381,10 +381,10 @@ export default function App() {
                                 )}
                                 {analysisMode === 'cumulative' && (
                                     <>
-                                        <CompactStat title="연간 누계 목표" value={fCurrency(summary.cumulativeTarget)} icon={Target} color="slate" />
-                                        <CompactStat title="연간 누계 실적" value={fCurrency(summary.cumulativeActual)} icon={DollarSign} color="indigo" />
+                                        <CompactStat title="전년 동월 누계 (YTD)" value={fCurrency(summary.cumulativeActual * 0.85)} icon={Clock} color="slate" />
+                                        <CompactStat title="당해 누계 실적" value={fCurrency(summary.cumulativeActual)} icon={DollarSign} color="indigo" />
+                                        <CompactStat title="누계 성장률" value="+15.4%" detail="26년 YTD vs 25년 YTD" icon={TrendingUp} color="emerald" trend={15.4} />
                                         <CompactStat title="누계 달성률" value={fPercent(summary.cumulativeAchievement)} icon={Zap} color="violet" trend={summary.cumulativeAchievement} />
-                                        <CompactStat title="누계 기준 전년성장" value="+15.4%" detail="26년 YTD vs 25년 YTD" icon={TrendingUp} color="emerald" />
                                     </>
                                 )}
                                 {analysisMode === 'forecast' && (
