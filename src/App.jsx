@@ -126,12 +126,9 @@ export default function App() {
     const [weightUnit, setWeightUnit] = useState('KG');
     const [showAmountDropdown, setShowAmountDropdown] = useState(false);
     const [showWeightDropdown, setShowWeightDropdown] = useState(false);
-    const [fontFamily, setFontFamily] = useState('Gmarket'); // Default to Gmarket as requested
+    const [fontFamily, setFontFamily] = useState('Gmarket');
 
-    // 전체 마스터 데이터 상태 관리 (초깃값 샘플 생성)
     const [masterData, setMasterData] = useState(() => generateFullDataset());
-
-    // 최종 업데이트 시간 상태
     const [lastUpdated, setLastUpdated] = useState(() => {
         const now = new Date();
         const yyyy = now.getFullYear();
@@ -142,7 +139,6 @@ export default function App() {
         return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
     });
 
-    // 동적 매트릭 포맷터 (금액/중량 통합)
     const fMetric = (val) => {
         if (val === undefined || val === null) return '0';
         if (metricType === 'amount') {
@@ -159,132 +155,70 @@ export default function App() {
 
     const formatDisplayMonth = (ym) => {
         const [y, m] = ym.split('-');
-        return `${y}년 ${m.padStart(2, '0')}월`;
+        return `${y}년 ${m}월`;
     };
 
-    const bi = useMemo(() => {
-        const [y, m] = selectedMonth.split('-').map(Number);
-        const ymStr = `${y}${m.toString().padStart(2, '0')}`;
+    const bi = useMemo(() => new SalesBI(masterData.actual, masterData.target), [masterData]);
 
-        // 전년 동월 계산
-        const lyStr = `${y - 1}${m.toString().padStart(2, '0')}`;
-
-        // 전월 계산
-        let lmY = y, lmM = m - 1;
-        if (lmM === 0) { lmY = y - 1; lmM = 12; }
-        const lmStr = `${lmY}${lmM.toString().padStart(2, '0')}`;
-
-        const actual = masterData.actual.filter(d => d['년도월'] === ymStr);
-        const target = masterData.target.filter(d => d['년도월'] === ymStr);
-        const lastYear = masterData.actual.filter(d => d['년도월'] === lyStr);
-        const lastMonth = masterData.actual.filter(d => d['년도월'] === lmStr);
-
-        return new SalesBI(actual, target, lastYear, lastMonth);
-    }, [selectedMonth, masterData]);
-
-    const summary = bi.getSummary();
     const currentView = path[path.length - 1];
 
+    const summary = useMemo(() => {
+        return bi.getSummary(selectedMonth, currentView.level, currentView.id, mainTab, metricType);
+    }, [bi, selectedMonth, currentView, mainTab, metricType]);
+
     const drillDownData = useMemo(() => {
-        let result = [];
-        if (currentView.level === 'root') result = bi.getAggregatedByTeam();
-        else if (currentView.level === 'team') result = bi.getAggregatedBySalesperson(currentView.name);
-        else if (currentView.level === 'salesperson') result = bi.getAggregatedByCustomer(currentView.name);
-        else if (currentView.level === 'customer') result = bi.getAggregatedByItem(currentView.name);
+        const nextLevelMap = { root: 'team', team: 'person', person: 'person' };
+        const nextLevel = nextLevelMap[currentView.level];
+        const data = bi.getDrillDown(selectedMonth, currentView.level, currentView.id, nextLevel, mainTab, metricType);
 
-        // 모든 모드에서 공통으로 사용할 수 있도록 데이터 보강
-        return result.map(item => {
-            // metricType에 따라 기본 필드 값 매핑
-            const activeActual = metricType === 'amount' ? item.actual : item.weight;
-            const activeTarget = metricType === 'amount' ? item.target : (item.target * 0.0001); // 중량 목표는 시뮬레이션
-            const activeLastYear = metricType === 'amount' ? item.lastYear : item.lastYearWeight;
-            const activeLastMonth = metricType === 'amount' ? item.lastMonth : item.lastMonthWeight;
-            const activeCumulativeActual = metricType === 'amount' ? item.cumulativeActual : item.cumulativeWeight;
-            const activeCumulativeTarget = metricType === 'amount' ? item.cumulativeTarget : (item.cumulativeTarget * 0.0001);
-            const activeForecast = metricType === 'amount' ? item.forecast : item.forecastWeight;
-
-            const fAmt = activeForecast || (SETTINGS.currentBusinessDay > 0 ? (activeActual / SETTINGS.currentBusinessDay) * SETTINGS.businessDays['2026-02'] : 0);
-            const fAch = activeTarget > 0 ? (fAmt / activeTarget) * 100 : 0;
-            const ach = activeTarget > 0 ? (activeActual / activeTarget) * 100 : 0;
+        return data.map(item => {
+            const achievement = (item.actual / (item.target || 1)) * 100;
+            const lastYearActual = item.lastYear || 0;
+            const yoy = lastYearActual ? ((item.actual - lastYearActual) / lastYearActual) * 100 : 0;
+            const lastMonthActual = item.lastMonth || 0;
+            const mom = lastMonthActual ? ((item.actual - lastMonthActual) / lastMonthActual) * 100 : 0;
 
             return {
                 ...item,
-                // UI에서 공통으로 사용하는 alias 필드들
-                actual: mainTab === 'expected' ? fAmt : activeActual,
-                target: activeTarget,
-                achievement: mainTab === 'expected' ? fAch : ach,
-                lastYear: activeLastYear,
-                lastMonth: activeLastMonth,
-                cumulativeActual: activeCumulativeActual,
-                cumulativeTarget: activeCumulativeTarget,
-                forecastAmt: fAmt,
-                forecastAchievement: fAch,
-                yoy: activeLastYear > 0 ? ((activeActual - activeLastYear) / activeLastYear) * 100 : 0,
-                mom: activeLastMonth > 0 ? ((activeActual - activeLastMonth) / activeLastMonth) * 100 : 0,
-                progressGap: (mainTab === 'expected' ? fAch : ach) - ((SETTINGS.currentBusinessDay / SETTINGS.businessDays['2026-02']) * 100)
+                achievement,
+                yoy,
+                mom,
+                progressRate: (SETTINGS.currentBusinessDay / (SETTINGS.businessDays[selectedMonth] || 20)) * 100,
+                progressGap: achievement - ((SETTINGS.currentBusinessDay / (SETTINGS.businessDays[selectedMonth] || 20)) * 100)
             };
         });
-    }, [path, bi, mainTab, currentView, metricType]);
+    }, [path, bi, selectedMonth, currentView, mainTab, metricType]);
 
     const handleDrillDown = (item) => {
-        let nextLevel = '';
-        if (currentView.level === 'root') nextLevel = 'team';
-        else if (currentView.level === 'team') nextLevel = 'salesperson';
-        else if (currentView.level === 'salesperson') nextLevel = 'customer';
-        else return;
-        setPath([...path, { level: nextLevel, id: item.id, name: item.name }]);
+        if (currentView.level === 'person') return;
+        const nextLevelMap = { root: 'team', team: 'person' };
+        setPath([...path, { level: nextLevelMap[currentView.level], id: item.id || item.name, name: item.name }]);
+    };
+
+    const handleExport = () => {
+        const headers = ["구분", "목표", "실적", "달성률", "전년실적", "전년성장률"];
+        const rows = drillDownData.map(d => [
+            d.name,
+            d.target,
+            d.actual,
+            `${d.achievement.toFixed(1)}%`,
+            d.lastYear,
+            `${d.yoy.toFixed(1)}%`
+        ]);
+        const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        saveAs(blob, `sales_report_${selectedMonth}.csv`);
     };
 
     const fontMap = {
-        'Pretendard': 'font-style-Pretendard',
-        'Gmarket': 'font-style-Gmarket',
-        'IBM': 'font-style-IBM',
-        'Nanum': 'font-style-Nanum',
-        'Serif': 'font-style-Serif'
-    };
-
-    const iconMap = {
-        dashboard: BarChart3,
-        settings: Settings
-    };
-
-    // 엑셀 다운로드 (분석 데이터 요약 추출)
-    const handleExport = () => {
-        const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        const wsData = drillDownData.map(item => ({
-            '분석단위': item.name,
-            '단위결과': metricType === 'amount' ? '금액' : '중량',
-            '현실적': item.actual,
-            '목표금액': item.target,
-            '달성률(%)': item.achievement,
-            '전년동기': item.lastYear,
-            'YOY성장(%)': item.yoy,
-            '전월실적': item.lastMonth,
-            'MOM성장(%)': item.mom,
-            '당월예상마감': item.forecastAmt,
-            '예상달성률(%)': item.forecastAchievement,
-            '마감진도격차(%)': item.progressGap
-        }));
-
-        const ws = window.XLSX.utils.json_to_sheet(wsData);
-        // 컬럼 크기 약간 넓히기
-        ws['!cols'] = Array(12).fill({ wch: 15 });
-        const wb = window.XLSX.utils.book_new();
-        window.XLSX.utils.book_append_sheet(wb, ws, `${selectedMonth} 분석결과`);
-
-        // 가장 안정적인 다운로드 전용 라이브러리 활용
-        const excelBuffer = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
-        saveAs(blob, 'Sales_Dashboard_Data.xlsx');
+        'Gmarket': 'font-gmarket',
+        'Pretendard': 'font-pretendard',
+        'Inter': 'font-inter'
     };
 
     return (
-        <div
-            className={`min-h-screen bg-[#f8fafc] text-slate-600 flex flex-col md:flex-row overflow-x-hidden pb-20 md:pb-0 shadow-inner ${fontMap[fontFamily]}`}
-        >
-            {/* Sidebar - Desktop Only */}
+        <div className={`min-h-screen bg-[#f8fafc] text-slate-600 flex flex-col md:flex-row overflow-x-hidden pb-20 md:pb-0 shadow-inner ${fontMap[fontFamily]}`}>
             <aside className="hidden md:flex w-64 bg-white border-r border-slate-200/60 flex-col py-10 z-50 h-screen sticky top-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)] px-6">
-                {/* 로고 영역 - 엔터프라이즈 감성 */}
                 <div className="flex items-center gap-4 px-2 mb-16">
                     <div className="flex flex-col justify-center">
                         <span className="text-xl font-black text-slate-900 tracking-tighter leading-none">영업 대시보드</span>
@@ -293,12 +227,11 @@ export default function App() {
 
                 <nav className="flex-1">
                     <div className="space-y-2">
-                        <SidebarIcon active={view === 'dashboard'} icon={iconMap.dashboard} label="매출 실적" onClick={() => setView('dashboard')} />
-                        <SidebarIcon active={view === 'settings'} icon={iconMap.settings} label="설정" onClick={() => setView('settings')} />
+                        <SidebarIcon active={view === 'dashboard'} icon={BarChart3} label="매출 실적" onClick={() => setView('dashboard')} />
+                        <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={() => setView('settings')} />
                     </div>
                 </nav>
 
-                {/* 하단 미니 위젯/아이콘 (디테일 추가) */}
                 <div className="pt-8 mt-8 border-t border-slate-100 px-2">
                     <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
                         <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
@@ -312,9 +245,7 @@ export default function App() {
                 </div>
             </aside>
 
-            {/* 메인 뷰포트 */}
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-                {/* 상단 통합 제어바 */}
                 <header className="py-2 px-4 md:py-3 md:px-8 border-b border-slate-200 bg-white">
                     <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 md:gap-6 mb-2 md:mb-4">
                         <div className="flex-1 min-w-0 w-full">
@@ -340,7 +271,6 @@ export default function App() {
                         </div>
 
                         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 md:gap-6 shrink-0 w-full md:w-auto">
-                            {/* 영업 진도 요약 미니 표 - 우측 배치 */}
                             <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition-all hover:border-indigo-500/30">
                                 <table className="text-[10px] md:text-[11px] leading-tight min-w-full">
                                     <thead className="bg-slate-100 border-b border-slate-200">
@@ -361,179 +291,99 @@ export default function App() {
                                     </tbody>
                                 </table>
                             </div>
-
-                            <div className="flex flex-col gap-2 shrink-0 w-full sm:w-[320px] bg-slate-50/80 p-2.5 rounded-[1.5rem] border border-slate-200/60 shadow-sm">
-                                {/* 헤더 간소화 */}
-                                <div className="flex items-center justify-between px-1">
-                                    <div className="flex items-center gap-1.5">
-                                        <Filter size={10} className="text-indigo-500" />
-                                        <span className="text-[9px] font-black text-slate-400 tracking-widest">FILTERS</span>
-                                    </div>
-                                    <div className="relative w-32 group"> {/* 월 선택을 헤더 옆으로 배치 가능하지만 일단 공간 확보를 위해 그리드 처리 */}
-                                        <div className="absolute left-2 top-1/2 -translate-y-1/2 text-indigo-500">
-                                            <Calendar size={12} />
-                                        </div>
-                                        <select
-                                            value={selectedMonth}
-                                            onChange={(e) => setSelectedMonth(e.target.value)}
-                                            className="w-full pl-7 pr-4 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-black text-slate-700 outline-none cursor-pointer appearance-none transition-all"
-                                        >
-                                            <optgroup label="2026년">
-                                                <option value="2026-02">2026년 02월</option>
-                                                <option value="2026-01">2026년 01월</option>
-                                            </optgroup>
-                                            <optgroup label="2025년">
-                                                {Array.from({ length: 12 }, (_, i) => 12 - i).map(m => (
-                                                    <option key={m} value={`2025-${m.toString().padStart(2, '0')}`}>2025년 {m.toString().padStart(2, '0')}월</option>
-                                                ))}
-                                            </optgroup>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {/* 토글 그룹을 가로로 통합 */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="bg-slate-200/40 p-0.5 rounded-lg flex gap-0.5">
-                                        <button
-                                            onClick={() => setMainTab('current')}
-                                            className={`flex-1 py-1 rounded-md text-[10px] font-black transition-all ${mainTab === 'current' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-                                        >
-                                            현재실적
-                                        </button>
-                                        <button
-                                            onClick={() => setMainTab('expected')}
-                                            className={`flex-1 py-1 rounded-md text-[10px] font-black transition-all ${mainTab === 'expected' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-                                        >
-                                            예상마감
-                                        </button>
-                                    </div>
-                                    <div className="bg-slate-200/40 p-0.5 rounded-lg flex gap-0.5">
-                                        <button
-                                            onClick={() => setMetricType('amount')}
-                                            className={`flex-1 py-1 rounded-md text-[10px] font-black transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-                                        >
-                                            금액기준
-                                        </button>
-                                        <button
-                                            onClick={() => setMetricType('weight')}
-                                            className={`flex-1 py-1 rounded-md text-[10px] font-black transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-                                        >
-                                            중량기준
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* 하단: 단위 구성 (2열 배치) */}
-                                <div className="grid grid-cols-2 gap-3">
-                                    {/* 금액 단위 블록 */}
-                                    <div className="relative">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setMetricType('amount');
-                                                setShowAmountDropdown(!showAmountDropdown);
-                                                setShowWeightDropdown(false);
-                                            }}
-                                            className={`flex items-center justify-between w-full px-2 py-1.5 rounded-md bg-white border text-[9px] font-bold transition-all ${metricType === 'amount' ? 'border-indigo-500/30 text-indigo-600' : 'border-slate-200 text-slate-400'}`}
-                                        >
-                                            <span className="truncate">{CURRENCY_UNITS.find(u => u.key === amountUnit)?.label}</span>
-                                            <ChevronDown size={8} className={`text-indigo-500 transition-transform ${showAmountDropdown ? 'rotate-180' : ''}`} />
-                                        </button>
-                                        {showAmountDropdown && (
-                                            <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-[100] py-1">
-                                                {CURRENCY_UNITS.map(unit => (
-                                                    <button
-                                                        key={unit.key}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setAmountUnit(unit.key);
-                                                            setMetricType('amount');
-                                                            setShowAmountDropdown(false);
-                                                        }}
-                                                        className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${amountUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-                                                    >
-                                                        {unit.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* 중량 단위 블록 */}
-                                    <div className="relative">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setMetricType('weight');
-                                                setShowWeightDropdown(!showWeightDropdown);
-                                                setShowAmountDropdown(false);
-                                            }}
-                                            className={`flex items-center justify-between w-full px-2 py-1.5 rounded-md bg-white border text-[9px] font-bold transition-all ${metricType === 'weight' ? 'border-indigo-500/30 text-indigo-600' : 'border-slate-200 text-slate-400'}`}
-                                        >
-                                            <span className="truncate">{WEIGHT_UNITS.find(u => u.key === weightUnit)?.label}</span>
-                                            <ChevronDown size={8} className={`text-indigo-500 transition-transform ${showWeightDropdown ? 'rotate-180' : ''}`} />
-                                        </button>
-                                        {showWeightDropdown && (
-                                            <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-[100] py-1">
-                                                {WEIGHT_UNITS.map(unit => (
-                                                    <button
-                                                        key={unit.key}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setWeightUnit(unit.key);
-                                                            setMetricType('weight');
-                                                            setShowWeightDropdown(false);
-                                                        }}
-                                                        className={`w-full text-left px-3 py-1.5 text-[10px] font-bold transition-colors ${weightUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-                                                    >
-                                                        {unit.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                        </div>
+                        {path.length > 1 ? (
+                            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-2 bg-slate-50 px-4 rounded-xl border border-slate-200 self-start mx-10 mt-[-20px] mb-6 shadow-sm">
+                                {path.map((p, i) => (
+                                    <button key={i} onClick={() => setPath(path.slice(0, i + 1))} className={`text-[11px] font-bold px-3 py-1 transition-all flex items-center gap-2 ${i === path.length - 1 ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
+                                        {p.name}
+                                        {i < path.length - 1 && <ChevronRight size={10} className="text-slate-300" />}
+                                    </button>
+                                ))}
                             </div>
-                        </div>
+                        ) : null}
                     </div>
-
-                    {path.length > 1 ? (
-                        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-2 bg-slate-50 px-4 rounded-xl border border-slate-200 self-start mx-10 mt-[-20px] mb-6 shadow-sm">
-                            {path.map((p, i) => (
-                                <button key={i} onClick={() => setPath(path.slice(0, i + 1))} className={`text-[11px] font-bold px-3 py-1 transition-all flex items-center gap-2 ${i === path.length - 1 ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
-                                    {p.name}
-                                    {i < path.length - 1 && <ChevronRight size={10} className="text-slate-300" />}
-                                </button>
-                            ))}
-                        </div>
-                    ) : null}
                 </header>
 
                 <main className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-4 bg-[#f8fafc] md:max-h-screen">
                     {view === 'settings' ? <SettingsView setMasterData={setMasterData} masterData={masterData} setLastUpdated={setLastUpdated} fontFamily={fontFamily} setFontFamily={setFontFamily} fontMap={fontMap} /> : (
                         <div className="max-w-[1600px] mx-auto space-y-4">
-                            {/* 분석 모드 탭 내비게이션 (임원진용 대형 탭) */}
-                            <div className="overflow-x-auto no-scrollbar pb-1">
-                                <div className="flex bg-white p-1.5 rounded-2xl border border-slate-200 w-fit shadow-sm min-w-full sm:min-w-0">
-                                    {[
-                                        { id: 'goal', name: '목표대비' },
-                                        { id: 'yoy', name: '전년대비' },
-                                        { id: 'mom', name: '전월대비' },
-                                        { id: 'cumulative', name: '누계' },
-                                        { id: 'forecast', name: '예상마감' }
-                                    ].map(tab => (
-                                        <button
-                                            key={tab.id}
-                                            onClick={() => setAnalysisMode(tab.id)}
-                                            className={`px-4 md:px-10 py-2.5 md:py-3.5 rounded-xl text-xs md:text-base font-black transition-all whitespace-nowrap ${analysisMode === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-slate-600'}`}
+                            <div className="flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4">
+                                <div className="overflow-x-auto no-scrollbar">
+                                    <div className="flex bg-white p-1.5 rounded-2xl border border-slate-200 w-fit shadow-sm min-w-full sm:min-w-0">
+                                        {[
+                                            { id: 'goal', name: '목표대비' },
+                                            { id: 'yoy', name: '전년대비' },
+                                            { id: 'mom', name: '전월대비' },
+                                            { id: 'cumulative', name: '누계' },
+                                            { id: 'forecast', name: '예상마감' }
+                                        ].map(tab => (
+                                            <button
+                                                key={tab.id}
+                                                onClick={() => setAnalysisMode(tab.id)}
+                                                className={`px-4 md:px-8 py-2 md:py-3 rounded-xl text-xs md:text-sm font-black transition-all whitespace-nowrap ${analysisMode === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-slate-600'}`}
+                                            >
+                                                {tab.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2 bg-white/80 backdrop-blur-md p-1.5 px-3 rounded-2xl border border-slate-200 shadow-sm">
+                                    <div className="flex items-center gap-1.5 pr-2 border-r border-slate-100">
+                                        <Calendar size={14} className="text-indigo-500" />
+                                        <select
+                                            value={selectedMonth}
+                                            onChange={(e) => setSelectedMonth(e.target.value)}
+                                            className="bg-transparent text-xs font-black text-slate-700 outline-none cursor-pointer appearance-none"
                                         >
-                                            {tab.name}
-                                        </button>
-                                    ))}
+                                            <optgroup label="2026년">
+                                                <option value="2026-02">2026년 02월</option>
+                                                <option value="2026-01">2026년 01월</option>
+                                            </optgroup>
+                                        </select>
+                                        <ChevronDown size={10} className="text-slate-400" />
+                                    </div>
+
+                                    <div className="flex gap-1 bg-slate-100/50 p-1 rounded-xl">
+                                        <button onClick={() => setMainTab('current')} className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${mainTab === 'current' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>현재실적</button>
+                                        <button onClick={() => setMainTab('expected')} className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${mainTab === 'expected' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>예상마감</button>
+                                    </div>
+
+                                    <div className="flex gap-1 bg-slate-100/50 p-1 rounded-xl">
+                                        <button onClick={() => setMetricType('amount')} className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>금액기준</button>
+                                        <button onClick={() => setMetricType('weight')} className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>중량기준</button>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative">
+                                            <button onClick={(e) => { e.stopPropagation(); setMetricType('amount'); setShowAmountDropdown(!showAmountDropdown); setShowWeightDropdown(false); }} className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${metricType === 'amount' ? 'border-indigo-200 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}>
+                                                {CURRENCY_UNITS.find(u => u.key === amountUnit)?.label}
+                                            </button>
+                                            {showAmountDropdown && (
+                                                <div className="absolute bottom-full mb-2 right-0 w-24 bg-white border border-slate-200 rounded-xl shadow-xl z-[100] py-1">
+                                                    {CURRENCY_UNITS.map(unit => (
+                                                        <button key={unit.key} onClick={(e) => { e.stopPropagation(); setAmountUnit(unit.key); setMetricType('amount'); setShowAmountDropdown(false); }} className={`w-full text-left px-3 py-1.5 text-[10px] font-bold ${amountUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}>{unit.label}</button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="relative">
+                                            <button onClick={(e) => { e.stopPropagation(); setMetricType('weight'); setShowWeightDropdown(!showWeightDropdown); setShowAmountDropdown(false); }} className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${metricType === 'weight' ? 'border-indigo-200 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}>
+                                                {WEIGHT_UNITS.find(u => u.key === weightUnit)?.label}
+                                            </button>
+                                            {showWeightDropdown && (
+                                                <div className="absolute bottom-full mb-2 right-0 w-24 bg-white border border-slate-200 rounded-xl shadow-xl z-[100] py-1">
+                                                    {WEIGHT_UNITS.map(unit => (
+                                                        <button key={unit.key} onClick={(e) => { e.stopPropagation(); setWeightUnit(unit.key); setMetricType('weight'); setShowWeightDropdown(false); }} className={`w-full text-left px-3 py-1.5 text-[10px] font-bold ${weightUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}>{unit.label}</button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* 핵심 KPI 섹션 (모드별 동적 변경) */}
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
                                 {analysisMode === 'goal' && (
                                     <>
@@ -577,9 +427,7 @@ export default function App() {
                                 )}
                             </div>
 
-                            {/* 메인 대시보드 그리드 */}
                             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                                {/* 좌측 분석 섹션 (차트 + 테이블) */}
                                 <div className="xl:col-span-3 space-y-6">
                                     <div className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm">
                                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
@@ -624,7 +472,6 @@ export default function App() {
                                         </div>
                                     </div>
 
-                                    {/* 상세 데이터 테이블 */}
                                     <div className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm">
                                         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
                                             <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Detail Breakdown</h3>
@@ -697,9 +544,7 @@ export default function App() {
                                     </div>
                                 </div>
 
-                                {/* 우측 위젯 컬럼 */}
                                 <div className="space-y-6">
-                                    {/* 점유율 위젯 */}
                                     <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
                                         <h3 className="text-xs font-black text-slate-800 italic mb-6">Market Share</h3>
                                         <div className="h-[200px]">
@@ -725,7 +570,6 @@ export default function App() {
                                         </div>
                                     </div>
 
-                                    {/* 기업 연간 목표 위젯 - 라이트 테마 최적화 */}
                                     <div className="bg-white border border-slate-200 rounded-[24px] p-6 text-slate-800 relative overflow-hidden group shadow-sm hover:shadow-md transition-all">
                                         <div className="absolute -top-6 -right-6 w-24 h-24 bg-indigo-50 rounded-full blur-2xl group-hover:scale-150 transition-transform" />
                                         <Globe size={40} className="absolute bottom-2 right-2 text-indigo-100" />
@@ -749,7 +593,6 @@ export default function App() {
                     )}
                 </main>
 
-                {/* Mobile Bottom Navigation */}
                 <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[85%] bg-white/95 backdrop-blur-3xl border border-slate-200 rounded-[24px] p-2.5 flex items-center justify-around shadow-2xl z-50 ring-1 ring-slate-900/5">
                     <SidebarIcon active={view === 'dashboard'} icon={BarChart3} label="매출 실적" onClick={() => setView('dashboard')} color="indigo" />
                     <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={() => setView('settings')} color="slate" />
@@ -781,7 +624,6 @@ function SidebarIcon({ active, icon: Icon, label, onClick }) {
                 <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.8)]" />
             )}
 
-            {/* Hover Decorator */}
             {!active && (
                 <motion.div
                     initial={{ opacity: 0, x: -10 }}
@@ -793,7 +635,6 @@ function SidebarIcon({ active, icon: Icon, label, onClick }) {
     );
 }
 
-// 차트 내부 라벨
 function CustomLabel({ x, y, width, value, mainTab, analysisMode }) {
     if (value === undefined) return null;
     const isNeg = parseFloat(value) < 0;
