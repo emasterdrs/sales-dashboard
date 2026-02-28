@@ -309,27 +309,7 @@ export default function App() {
                     {view === 'settings' ? <SettingsView setMasterData={setMasterData} masterData={masterData} setLastUpdated={setLastUpdated} fontFamily={fontFamily} setFontFamily={setFontFamily} fontMap={fontMap} /> : (
                         <div className="max-w-[1600px] mx-auto space-y-4">
                             <div className="flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4">
-                                <div className="overflow-x-auto no-scrollbar">
-                                    <div className="flex bg-white p-1.5 rounded-2xl border border-slate-200 w-fit shadow-sm min-w-full sm:min-w-0">
-                                        {[
-                                            { id: 'goal', name: '목표대비' },
-                                            { id: 'yoy', name: '전년대비' },
-                                            { id: 'mom', name: '전월대비' },
-                                            { id: 'cumulative', name: '누계' },
-                                            { id: 'forecast', name: '예상마감' }
-                                        ].map(tab => (
-                                            <button
-                                                key={tab.id}
-                                                onClick={() => setAnalysisMode(tab.id)}
-                                                className={`px-4 md:px-8 py-2 md:py-3 rounded-xl text-xs md:text-sm font-black transition-all whitespace-nowrap ${analysisMode === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-slate-600'}`}
-                                            >
-                                                {tab.name}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-2 bg-white/80 backdrop-blur-md p-1.5 px-3 rounded-2xl border border-slate-200 shadow-sm">
+                                <div className="flex flex-wrap items-center gap-2 bg-white/80 backdrop-blur-md p-1.5 px-3 rounded-2xl border border-slate-200/60 shadow-sm transition-all hover:shadow-md">
                                     <div className="flex items-center gap-1.5 pr-2 border-r border-slate-100">
                                         <Calendar size={14} className="text-indigo-500" />
                                         <select
@@ -379,6 +359,28 @@ export default function App() {
                                                     ))}
                                                 </div>
                                             )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="overflow-x-auto no-scrollbar">
+                                    <div className="flex bg-white/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/60 w-fit shadow-sm transition-all hover:shadow-md min-w-full sm:min-w-0">
+                                        <div className="flex gap-1 bg-slate-100/50 p-1 rounded-xl">
+                                            {[
+                                                { id: 'goal', name: '목표대비' },
+                                                { id: 'yoy', name: '전년대비' },
+                                                { id: 'mom', name: '전월대비' },
+                                                { id: 'cumulative', name: '누계' },
+                                                { id: 'forecast', name: '예상마감' }
+                                            ].map(tab => (
+                                                <button
+                                                    key={tab.id}
+                                                    onClick={() => setAnalysisMode(tab.id)}
+                                                    className={`px-4 md:px-6 py-1.5 md:py-2 rounded-lg text-[10px] md:text-sm font-black transition-all whitespace-nowrap ${analysisMode === tab.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                >
+                                                    {tab.name}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>
