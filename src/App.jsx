@@ -221,7 +221,7 @@ export default function App() {
             <aside className="hidden md:flex w-64 bg-white border-r border-slate-200/60 flex-col py-10 z-50 h-screen sticky top-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)] px-6">
                 <div className="flex items-center gap-4 px-2 mb-16">
                     <div className="flex flex-col justify-center">
-                        <span className="text-xl font-black text-slate-900 tracking-tighter leading-none">영업 대시보드</span>
+                        <span className="text-3xl font-black text-slate-900 tracking-tighter leading-none">영업 대시보드</span>
                     </div>
                 </div>
 
@@ -309,57 +309,25 @@ export default function App() {
                     {view === 'settings' ? <SettingsView setMasterData={setMasterData} masterData={masterData} setLastUpdated={setLastUpdated} fontFamily={fontFamily} setFontFamily={setFontFamily} fontMap={fontMap} /> : (
                         <div className="max-w-[1600px] mx-auto space-y-4">
                             <div className="flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4">
-                                <div className="flex flex-wrap items-center gap-2 bg-white/80 backdrop-blur-md p-1.5 px-3 rounded-2xl border border-slate-200/60 shadow-sm transition-all hover:shadow-md">
-                                    <div className="flex items-center gap-1.5 pr-2 border-r border-slate-100">
-                                        <Calendar size={14} className="text-indigo-500" />
+                                <div className="flex flex-wrap items-center gap-3 bg-white/80 backdrop-blur-md p-2 px-4 rounded-2xl border border-slate-200/60 shadow-sm transition-all hover:shadow-md">
+                                    <div className="flex items-center gap-2 pr-3 border-r border-slate-100">
+                                        <Calendar size={18} className="text-indigo-500" />
                                         <select
                                             value={selectedMonth}
                                             onChange={(e) => setSelectedMonth(e.target.value)}
-                                            className="bg-transparent text-xs font-black text-slate-700 outline-none cursor-pointer appearance-none"
+                                            className="bg-transparent text-sm md:text-base font-black text-slate-700 outline-none cursor-pointer appearance-none py-1"
                                         >
                                             <optgroup label="2026년">
                                                 <option value="2026-02">2026년 02월</option>
                                                 <option value="2026-01">2026년 01월</option>
                                             </optgroup>
                                         </select>
-                                        <ChevronDown size={10} className="text-slate-400" />
+                                        <ChevronDown size={12} className="text-slate-400" />
                                     </div>
 
-                                    <div className="flex gap-1 bg-slate-100/50 p-1 rounded-xl">
-                                        <button onClick={() => setMainTab('current')} className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${mainTab === 'current' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>현재실적</button>
-                                        <button onClick={() => setMainTab('expected')} className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${mainTab === 'expected' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>예상마감</button>
-                                    </div>
-
-                                    <div className="flex gap-1 bg-slate-100/50 p-1 rounded-xl">
-                                        <button onClick={() => setMetricType('amount')} className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>금액기준</button>
-                                        <button onClick={() => setMetricType('weight')} className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>중량기준</button>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <div className="relative">
-                                            <button onClick={(e) => { e.stopPropagation(); setMetricType('amount'); setShowAmountDropdown(!showAmountDropdown); setShowWeightDropdown(false); }} className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${metricType === 'amount' ? 'border-indigo-200 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}>
-                                                {CURRENCY_UNITS.find(u => u.key === amountUnit)?.label}
-                                            </button>
-                                            {showAmountDropdown && (
-                                                <div className="absolute bottom-full mb-2 right-0 w-24 bg-white border border-slate-200 rounded-xl shadow-xl z-[100] py-1">
-                                                    {CURRENCY_UNITS.map(unit => (
-                                                        <button key={unit.key} onClick={(e) => { e.stopPropagation(); setAmountUnit(unit.key); setMetricType('amount'); setShowAmountDropdown(false); }} className={`w-full text-left px-3 py-1.5 text-[10px] font-bold ${amountUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}>{unit.label}</button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="relative">
-                                            <button onClick={(e) => { e.stopPropagation(); setMetricType('weight'); setShowWeightDropdown(!showWeightDropdown); setShowAmountDropdown(false); }} className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${metricType === 'weight' ? 'border-indigo-200 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}>
-                                                {WEIGHT_UNITS.find(u => u.key === weightUnit)?.label}
-                                            </button>
-                                            {showWeightDropdown && (
-                                                <div className="absolute bottom-full mb-2 right-0 w-24 bg-white border border-slate-200 rounded-xl shadow-xl z-[100] py-1">
-                                                    {WEIGHT_UNITS.map(unit => (
-                                                        <button key={unit.key} onClick={(e) => { e.stopPropagation(); setWeightUnit(unit.key); setMetricType('weight'); setShowWeightDropdown(false); }} className={`w-full text-left px-3 py-1.5 text-[10px] font-bold ${weightUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}>{unit.label}</button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
+                                    <div className="flex gap-1.5 bg-slate-100/50 p-1.5 rounded-xl">
+                                        <button onClick={() => setMainTab('current')} className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-black transition-all ${mainTab === 'current' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>현재실적</button>
+                                        <button onClick={() => setMainTab('expected')} className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-black transition-all ${mainTab === 'expected' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>예상마감</button>
                                     </div>
                                 </div>
 
@@ -432,16 +400,44 @@ export default function App() {
                             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
                                 <div className="xl:col-span-3 space-y-6">
                                     <div className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm">
-                                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                                        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
                                             <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                                                 <TrendingUp size={16} className="text-indigo-600" />
                                                 {analysisMode === 'goal' ? '목표 대비 달성률 집계' :
                                                     analysisMode === 'yoy' ? '전년 대비 성장률 집계' :
                                                         analysisMode === 'mom' ? '전월 대비 성장률 집계' : '누계 실적 집계'}
                                             </h3>
-                                            <div className="flex bg-slate-100 p-0.5 rounded-lg scale-90 border border-slate-200">
-                                                <button onClick={() => setMetricType('amount')} className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
-                                                <button onClick={() => setMetricType('weight')} className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>중량</button>
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                                                    <button onClick={() => setMetricType('amount')} className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
+                                                    <button onClick={() => setMetricType('weight')} className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>중량</button>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="relative">
+                                                        <button onClick={(e) => { e.stopPropagation(); setMetricType('amount'); setShowAmountDropdown(!showAmountDropdown); setShowWeightDropdown(false); }} className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${metricType === 'amount' ? 'border-indigo-200 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}>
+                                                            {CURRENCY_UNITS.find(u => u.key === amountUnit)?.label}
+                                                        </button>
+                                                        {showAmountDropdown && (
+                                                            <div className="absolute top-full mt-2 right-0 w-24 bg-white border border-slate-200 rounded-xl shadow-xl z-[100] py-1">
+                                                                {CURRENCY_UNITS.map(unit => (
+                                                                    <button key={unit.key} onClick={(e) => { e.stopPropagation(); setAmountUnit(unit.key); setMetricType('amount'); setShowAmountDropdown(false); }} className={`w-full text-left px-3 py-1.5 text-[10px] font-bold ${amountUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}>{unit.label}</button>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="relative">
+                                                        <button onClick={(e) => { e.stopPropagation(); setMetricType('weight'); setShowWeightDropdown(!showWeightDropdown); setShowAmountDropdown(false); }} className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${metricType === 'weight' ? 'border-indigo-200 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}>
+                                                            {WEIGHT_UNITS.find(u => u.key === weightUnit)?.label}
+                                                        </button>
+                                                        {showWeightDropdown && (
+                                                            <div className="absolute top-full mt-2 right-0 w-24 bg-white border border-slate-200 rounded-xl shadow-xl z-[100] py-1">
+                                                                {WEIGHT_UNITS.map(unit => (
+                                                                    <button key={unit.key} onClick={(e) => { e.stopPropagation(); setWeightUnit(unit.key); setMetricType('weight'); setShowWeightDropdown(false); }} className={`w-full text-left px-3 py-1.5 text-[10px] font-bold ${weightUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}>{unit.label}</button>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="p-6 h-[340px]">
@@ -475,8 +471,40 @@ export default function App() {
                                     </div>
 
                                     <div className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm">
-                                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                             <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Detail Breakdown</h3>
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                                                    <button onClick={() => setMetricType('amount')} className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
+                                                    <button onClick={() => setMetricType('weight')} className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>중량</button>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="relative">
+                                                        <button onClick={(e) => { e.stopPropagation(); setMetricType('amount'); setShowAmountDropdown(!showAmountDropdown); setShowWeightDropdown(false); }} className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${metricType === 'amount' ? 'border-indigo-200 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}>
+                                                            {CURRENCY_UNITS.find(u => u.key === amountUnit)?.label}
+                                                        </button>
+                                                        {showAmountDropdown && (
+                                                            <div className="absolute top-full mt-2 right-0 w-24 bg-white border border-slate-200 rounded-xl shadow-xl z-[100] py-1">
+                                                                {CURRENCY_UNITS.map(unit => (
+                                                                    <button key={unit.key} onClick={(e) => { e.stopPropagation(); setAmountUnit(unit.key); setMetricType('amount'); setShowAmountDropdown(false); }} className={`w-full text-left px-3 py-1.5 text-[10px] font-bold ${amountUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}>{unit.label}</button>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="relative">
+                                                        <button onClick={(e) => { e.stopPropagation(); setMetricType('weight'); setShowWeightDropdown(!showWeightDropdown); setShowAmountDropdown(false); }} className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${metricType === 'weight' ? 'border-indigo-200 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}>
+                                                            {WEIGHT_UNITS.find(u => u.key === weightUnit)?.label}
+                                                        </button>
+                                                        {showWeightDropdown && (
+                                                            <div className="absolute top-full mt-2 right-0 w-24 bg-white border border-slate-200 rounded-xl shadow-xl z-[100] py-1">
+                                                                {WEIGHT_UNITS.map(unit => (
+                                                                    <button key={unit.key} onClick={(e) => { e.stopPropagation(); setWeightUnit(unit.key); setMetricType('weight'); setShowWeightDropdown(false); }} className={`w-full text-left px-3 py-1.5 text-[10px] font-bold ${weightUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}>{unit.label}</button>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-left text-[11px] table-fixed">
@@ -548,7 +576,16 @@ export default function App() {
 
                                 <div className="space-y-6">
                                     <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
-                                        <h3 className="text-xs font-black text-slate-800 italic mb-6">Market Share</h3>
+                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                            <h3 className="text-xs font-black text-slate-800 italic uppercase tracking-wider flex items-center gap-2">
+                                                <PieChartIcon size={16} className="text-indigo-600" />
+                                                Market Share
+                                            </h3>
+                                            <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                                                <button onClick={() => setMetricType('amount')} className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
+                                                <button onClick={() => setMetricType('weight')} className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>중량</button>
+                                            </div>
+                                        </div>
                                         <div className="h-[200px]">
                                             <ResponsiveContainer>
                                                 <PieChart>
