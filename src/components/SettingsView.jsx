@@ -68,8 +68,25 @@ export function SettingsView({ setMasterData, setLastUpdated, selectedMonth, sub
 function BusinessDaysSubView({ year }) {
     const calendarDataRaw = useMemo(() => getYearlyCalendarData(year), [year]);
     const [editingMonth, setEditingMonth] = useState(null);
-    const [holidayNames, setHolidayNames] = useState({});
-    const [toggledDays, setToggledDays] = useState({});
+
+    // Load from localStorage or initialize empty
+    const [holidayNames, setHolidayNames] = useState(() => {
+        const saved = localStorage.getItem(`holidayNames_${year}`);
+        return saved ? JSON.parse(saved) : {};
+    });
+    const [toggledDays, setToggledDays] = useState(() => {
+        const saved = localStorage.getItem(`toggledDays_${year}`);
+        return saved ? JSON.parse(saved) : {};
+    });
+
+    // Save to localStorage on change
+    useEffect(() => {
+        localStorage.setItem(`holidayNames_${year}`, JSON.stringify(holidayNames));
+    }, [holidayNames, year]);
+
+    useEffect(() => {
+        localStorage.setItem(`toggledDays_${year}`, JSON.stringify(toggledDays));
+    }, [toggledDays, year]);
 
     const calendarData = useMemo(() => {
         return calendarDataRaw.map(m => ({
