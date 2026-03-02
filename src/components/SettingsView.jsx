@@ -70,6 +70,40 @@ function BusinessDaysSubView({ year }) {
 
     return (
         <div className="space-y-12">
+            {/* 연간 영업일수 요약 표 */}
+            <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm p-8">
+                <div className="flex items-center gap-3 mb-6">
+                    <CheckCircle2 size={20} className="text-emerald-500" />
+                    <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">{year}년 월별 영업일 요약</h3>
+                </div>
+                <div className="overflow-x-auto no-scrollbar">
+                    <table className="w-full text-center border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50 border-y border-slate-100">
+                                {calendarData.map(m => (
+                                    <th key={m.month} className="py-4 px-2 text-[10px] md:text-sm font-black text-slate-400 uppercase tracking-widest border-r border-slate-100 last:border-r-0">
+                                        {m.month}월
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr className="hover:bg-slate-50/50 transition-colors">
+                                {calendarData.map(m => {
+                                    const bizDays = m.days.filter(d => d.isBusinessDay).length;
+                                    return (
+                                        <td key={m.month} className="py-6 px-2 border-r border-slate-100 last:border-r-0 group">
+                                            <span className="text-xl md:text-2xl font-black text-slate-800 group-hover:text-indigo-600 transition-colors">{bizDays}</span>
+                                            <span className="text-[10px] md:text-xs text-slate-300 ml-1 font-bold">일</span>
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             {calendarData.map(({ month, days }) => {
                 const totalBizDays = days.filter(d => d.isBusinessDay).length;
                 const holidays = days.filter(d => d.isHoliday || (d.isWeekend && d.holidayName));
