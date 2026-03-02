@@ -124,7 +124,7 @@ function BusinessDaysSubView({ year }) {
     return (
         <div className="space-y-12">
             {/* 연간 영업일수 요약 표 */}
-            <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm p-8">
+            <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm p-4 md:p-8">
                 <div className="flex items-center gap-3 mb-6">
                     <CheckCircle2 size={20} className="text-emerald-500" />
                     <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">{year}년 월별 영업일 요약</h3>
@@ -164,9 +164,9 @@ function BusinessDaysSubView({ year }) {
 
                 return (
                     <div key={month} className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all group">
-                        <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl font-black text-indigo-600 shadow-sm">
+                        <div className="p-4 md:p-8 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                            <div className="flex items-center gap-3 md:gap-4">
+                                <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-2xl flex items-center justify-center text-xl md:text-2xl font-black text-indigo-600 shadow-sm shrink-0">
                                     {month}
                                 </div>
                                 <div>
@@ -182,8 +182,8 @@ function BusinessDaysSubView({ year }) {
 
                         <div className="grid grid-cols-1 lg:grid-cols-3">
                             {/* 달력 영역 */}
-                            <div className="lg:col-span-2 p-8 border-r border-slate-100">
-                                <div className="grid grid-cols-7 gap-2">
+                            <div className="lg:col-span-2 p-4 md:p-8 border-b lg:border-b-0 lg:border-r border-slate-100">
+                                <div className="grid grid-cols-7 gap-1 md:gap-2">
                                     {['일', '월', '화', '수', '목', '금', '토'].map(d => (
                                         <div key={d} className={`text-center py-2 text-xs font-black uppercase tracking-widest ${d === '일' ? 'text-rose-500' : d === '토' ? 'text-blue-500' : 'text-slate-400'}`}>
                                             {d}
@@ -200,16 +200,16 @@ function BusinessDaysSubView({ year }) {
                                                 key={d.date}
                                                 onClick={() => isEditing && handleDayToggle(d.date, d.isBusinessDay)}
                                                 className={`
-                                                    relative h-16 rounded-xl flex flex-col items-center justify-center border transition-all
+                                                    relative h-14 md:h-16 rounded-lg md:rounded-xl flex flex-col items-center justify-center border transition-all
                                                     ${d.isBusinessDay ? 'bg-white border-transparent hover:border-indigo-200 hover:bg-indigo-50/30' :
                                                         d.isHoliday ? 'bg-rose-50 border-rose-100 text-rose-600' :
                                                             'bg-slate-50 border-slate-100 text-slate-400'}
                                                     ${isEditing ? 'cursor-pointer hover:border-indigo-400 hover:shadow-md' : ''}
                                                 `}
                                             >
-                                                <span className="text-sm font-black">{d.day}</span>
-                                                {displayName && !d.isBusinessDay && <span className="text-[8px] font-bold mt-1 text-center truncate px-1">{displayName}</span>}
-                                                {d.isBusinessDay && <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                                                <span className="text-xs md:text-sm font-black">{d.day}</span>
+                                                {displayName && !d.isBusinessDay && <span className="text-[6px] md:text-[8px] font-bold mt-0.5 md:mt-1 text-center truncate px-0.5 md:px-1 w-[95%]">{displayName}</span>}
+                                                {d.isBusinessDay && <div className="absolute top-1 right-1 w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-emerald-400" />}
                                             </div>
                                         );
                                     })}
@@ -217,7 +217,7 @@ function BusinessDaysSubView({ year }) {
                             </div>
 
                             {/* 상세 정보 (제외 사유) */}
-                            <div className="p-8 bg-slate-50/30">
+                            <div className="p-4 md:p-8 bg-slate-50/30">
                                 <div className="flex justify-between items-center mb-6">
                                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                         <Info size={14} className="text-indigo-400" />
