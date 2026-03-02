@@ -20,8 +20,8 @@ export const SETTINGS = {
  */
 export class SalesBI {
     constructor(actualData, targetData, lastYearData = [], lastMonthData = []) {
-        let registeredTeamNames = ['FD팀', 'FC팀', 'FR팀', 'FS팀', 'FL팀'];
-        let registeredTypeNames = ['치즈', '소스', '피자', '빵크림', '이스트', '대소공장유탕류', '대소공장밀키트', '냉동감자', '해외소싱상품류', '국내소싱상품류'];
+        let registeredTeamNames = ['영업1팀', '영업2팀', '영업3팀', '영업4팀', '영업5팀'];
+        let registeredTypeNames = ['새 유형1', '새 유형2', '새 유형3', '새 유형4', '새 유형5', '새 유형6'];
         try {
             const savedData = localStorage.getItem('dashboard_settings');
             const settingsData = savedData ? JSON.parse(savedData) : {};
@@ -82,10 +82,11 @@ export class SalesBI {
 
         let currentActual = metricType === 'amount' ? actualAmt : actualWeight;
         const businessDays = SETTINGS.businessDays[selectedMonth] || 20;
+        const currentBizDay = SETTINGS.currentBusinessDay || 1;
 
         // 예상마감 모드일 경우 실적을 예측치로 치환
         if (mainTab === 'expected') {
-            currentActual = (currentActual / SETTINGS.currentBusinessDay) * businessDays;
+            currentActual = (currentActual / currentBizDay) * businessDays;
         }
 
         const currentTarget = metricType === 'amount' ? targetAmt : (targetAmt / 4500); // 중량 목표는 시뮬레이션
@@ -117,7 +118,7 @@ export class SalesBI {
             cumulativeActual,
             cumulativeTarget,
             cumulativeAchievement: (cumulativeActual / (cumulativeTarget || 1)) * 100,
-            forecast: (currentActual / SETTINGS.currentBusinessDay) * businessDays
+            forecast: (currentActual / currentBizDay) * businessDays
         };
     }
 
@@ -221,8 +222,8 @@ export class SalesBI {
                 cumulativeTarget: targetAmt * 2.0,
                 cumulativeActual: actualAmt * 1.8,
                 cumulativeWeight: weight * 1.8,
-                forecast: (actualAmt / SETTINGS.currentBusinessDay) * (SETTINGS.businessDays['2026-02'] || 20),
-                forecastWeight: (weight / SETTINGS.currentBusinessDay) * (SETTINGS.businessDays['2026-02'] || 20)
+                forecast: (actualAmt / (SETTINGS.currentBusinessDay || 1)) * (SETTINGS.businessDays[SETTINGS.selectedMonth || '2026-02'] || 20),
+                forecastWeight: (weight / (SETTINGS.currentBusinessDay || 1)) * (SETTINGS.businessDays[SETTINGS.selectedMonth || '2026-02'] || 20)
             };
         }).sort((a, b) => {
             const aIdx = this.registeredTeamNames.indexOf(a.name);
@@ -275,8 +276,8 @@ export class SalesBI {
                 cumulativeTarget: targetAmt * 2.0,
                 cumulativeActual: actualAmt * 1.8,
                 cumulativeWeight: weight * 1.8,
-                forecast: (actualAmt / SETTINGS.currentBusinessDay) * (SETTINGS.businessDays['2026-02'] || 20),
-                forecastWeight: (weight / SETTINGS.currentBusinessDay) * (SETTINGS.businessDays['2026-02'] || 20)
+                forecast: (actualAmt / (SETTINGS.currentBusinessDay || 1)) * (SETTINGS.businessDays[SETTINGS.selectedMonth || '2026-02'] || 20),
+                forecastWeight: (weight / (SETTINGS.currentBusinessDay || 1)) * (SETTINGS.businessDays[SETTINGS.selectedMonth || '2026-02'] || 20)
             };
         }).sort((a, b) => {
             const aIdx = this.registeredTypeNames.indexOf(a.name);
@@ -331,8 +332,8 @@ export class SalesBI {
                 cumulativeTarget: targetAmt * 2.0,
                 cumulativeActual: actualAmt * 1.8,
                 cumulativeWeight: weight * 1.8,
-                forecast: (actualAmt / SETTINGS.currentBusinessDay) * (SETTINGS.businessDays['2026-02'] || 20),
-                forecastWeight: (weight / SETTINGS.currentBusinessDay) * (SETTINGS.businessDays['2026-02'] || 20)
+                forecast: (actualAmt / (SETTINGS.currentBusinessDay || 1)) * (SETTINGS.businessDays[SETTINGS.selectedMonth || '2026-02'] || 20),
+                forecastWeight: (weight / (SETTINGS.currentBusinessDay || 1)) * (SETTINGS.businessDays[SETTINGS.selectedMonth || '2026-02'] || 20)
             };
         }).sort((a, b) => b.actual - a.actual);
     }
@@ -378,8 +379,8 @@ export class SalesBI {
                 cumulativeTarget: targetAmt * 2.0,
                 cumulativeActual: actualAmt * 1.8,
                 cumulativeWeight: weight * 1.8,
-                forecast: (actualAmt / SETTINGS.currentBusinessDay) * (SETTINGS.businessDays['2026-02'] || 20),
-                forecastWeight: (weight / SETTINGS.currentBusinessDay) * (SETTINGS.businessDays['2026-02'] || 20)
+                forecast: (actualAmt / (SETTINGS.currentBusinessDay || 1)) * (SETTINGS.businessDays[SETTINGS.selectedMonth || '2026-02'] || 20),
+                forecastWeight: (weight / (SETTINGS.currentBusinessDay || 1)) * (SETTINGS.businessDays[SETTINGS.selectedMonth || '2026-02'] || 20)
             };
         }).sort((a, b) => b.actual - a.actual);
     }
@@ -401,8 +402,8 @@ export class SalesBI {
             // 품목별 목표는 데이터에 없으므로 실제의 1.2배로 시뮬레이션
             item.target = item.actual * 1.2;
             item.achievement = (item.actual / (item.target || 1)) * 100;
-            item.forecastAmt = (item.actual / SETTINGS.currentBusinessDay) * (SETTINGS.businessDays['2026-02'] || 20);
-            item.forecastWeight = (item.weight / SETTINGS.currentBusinessDay) * (SETTINGS.businessDays['2026-02'] || 20);
+            item.forecastAmt = (item.actual / (SETTINGS.currentBusinessDay || 1)) * (SETTINGS.businessDays[SETTINGS.selectedMonth || '2026-02'] || 20);
+            item.forecastWeight = (item.weight / (SETTINGS.currentBusinessDay || 1)) * (SETTINGS.businessDays[SETTINGS.selectedMonth || '2026-02'] || 20);
             return item;
         }).sort((a, b) => b.actual - a.actual);
     }

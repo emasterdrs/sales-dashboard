@@ -52,6 +52,7 @@ import { saveAs } from 'file-saver';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateStandardSalesData, generateTargetData, generateFullDataset } from './data/generateSalesData';
 import { SalesBI, SETTINGS } from './data/mockEngine';
+import { getYearlyCalendarData } from './lib/dateUtils';
 import { Quote } from './components/Quote';
 import { SettingsView } from './components/SettingsView';
 
@@ -122,11 +123,37 @@ function CompactStat({ title, value, detail, icon: Icon, color, trend }) {
     );
 }
 
+function SidebarIcon({ icon: Icon, label, active, onClick, badge }) {
+    return (
+        <button
+            onClick={onClick}
+            className={`flex items-center gap-4 w-full px-4 py-4 rounded-[22px] transition-all duration-300 group relative ${active
+                ? 'bg-white shadow-[0_10px_25px_-4px_rgba(99,102,241,0.12)] ring-1 ring-slate-100'
+                : 'text-slate-400 hover:text-slate-900 hover:bg-slate-50/50'
+                }`}
+        >
+            <div className={`p-2.5 rounded-[16px] transition-all duration-500 shadow-sm ${active
+                ? 'bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/40 scale-110'
+                : 'bg-slate-50 text-slate-400 group-hover:bg-white group-hover:text-indigo-500 group-hover:shadow-md'
+                }`}>
+                <Icon size={20} />
+            </div>
+            <span className={`text-[14px] font-bold tracking-tight transition-colors whitespace-nowrap ${active ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-700'}`}>
+                {label}
+            </span>
+            {active && (
+                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.8)]" />
+            )}
+        </button>
+    );
+}
+
 export default function App() {
+    // 1. All hooks at the top
     const [selectedMonth, setSelectedMonth] = useState('2026-02');
     const [view, setView] = useState('dashboard_team');
     const [mainTab, setMainTab] = useState('current');
-    const [analysisMode, setAnalysisMode] = useState('goal'); // goal, yoy, mom, cumulative, forecast
+    const [analysisMode, setAnalysisMode] = useState('goal');
     const [metricType, setMetricType] = useState('amount');
     const [path, setPath] = useState([{ level: 'root', id: 'all', name: '전체' }]);
     const [amountUnit, setAmountUnit] = useState('1M');
@@ -135,40 +162,10 @@ export default function App() {
     const [showWeightDropdown, setShowWeightDropdown] = useState(false);
     const [fontFamily, setFontFamily] = useState('Gmarket');
     const [settingsSubView, setSettingsSubView] = useState('bizDays');
-
-    // Admin Login State
     const [isAdmin, setIsAdmin] = useState(false);
     const [showLogin, setShowLogin] = useState(false);
     const [loginId, setLoginId] = useState('');
     const [loginPw, setLoginPw] = useState('');
-
-    useEffect(() => {
-        setPath([{ level: view === 'dashboard_type' ? 'type' : 'root', id: 'all', name: '전체' }]);
-    }, [view]);
-
-    const handleSettingsClick = () => {
-        if (isAdmin) setView('settings');
-        else setShowLogin(true);
-    };
-
-    const handleLogin = (e) => {
-        e.preventDefault();
-        try {
-            // Local login logic without backend API
-            if (loginId === 'admin' && loginPw === 'admin1234') {
-                setIsAdmin(true);
-                setShowLogin(false);
-                setLoginId('');
-                setLoginPw('');
-                setView('settings');
-            } else {
-                alert('아이디 또는 비밀번호가 올바르지 않습니다.');
-            }
-        } catch (error) {
-            alert('로그인 처리 중 오류가 발생했습니다.');
-        }
-    };
-
     const [masterData, setMasterData] = useState(() => generateFullDataset());
     const [lastUpdated, setLastUpdated] = useState(() => {
         const now = new Date();
@@ -177,8 +174,62 @@ export default function App() {
         const dd = String(now.getDate()).padStart(2, '0');
         const hh = String(now.getHours()).padStart(2, '0');
         const min = String(now.getMinutes()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+        return `${yyyy}년 ${mm}월 ${dd}일 ${hh}:${min}`;
     });
+
+    const bizDayInfo = useMemo(() => {
+        if (!selectedMonth || !selectedMonth.includes('-')) return { currentBusinessDay: 1, totalBusinessDays: 20 };
+        const [year, month] = selectedMonth.split('-').map(Number);
+        const calendar = getYearlyCalendarData(year);
+        const monthData = calendar.find(m => m.month === month);
+
+        if (!monthData) return { currentBusinessDay: 1, totalBusinessDays: 20 };
+
+        let toggledDays = {};
+        try {
+            const savedData = localStorage.getItem('dashboard_settings');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                toggledDays = data[`toggledDays_${year}`] || {};
+            }
+        } catch (e) { }
+
+        const processedDays = monthData.days.map(d => {
+            const isToggled = toggledDays[d.date] !== undefined;
+            let isBusinessDay = d.isBusinessDay;
+            if (isToggled) isBusinessDay = toggledDays[d.date];
+            return { ...d, isBusinessDay };
+        });
+
+        const totalBusinessDays = processedDays.filter(d => d.isBusinessDay).length || 20;
+
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+
+        const nowY = now.getFullYear();
+        const nowM = now.getMonth() + 1;
+
+        const isPastMonth = year < nowY || (year === nowY && month < nowM);
+        const isFutureMonth = year > nowY || (year === nowY && month > nowM);
+
+        let currentBusinessDay = 0;
+        if (isPastMonth) {
+            currentBusinessDay = totalBusinessDays;
+        } else if (isFutureMonth) {
+            currentBusinessDay = 0;
+        } else {
+            const yesterdayIso = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+            currentBusinessDay = processedDays.filter(d => d.isBusinessDay && d.date <= yesterdayIso).length;
+        }
+
+        return { currentBusinessDay, totalBusinessDays };
+    }, [selectedMonth]);
+
+    // 전역 설정 연동
+    SETTINGS.currentBusinessDay = bizDayInfo.currentBusinessDay || 1;
+    SETTINGS.businessDays[selectedMonth] = bizDayInfo.totalBusinessDays;
+    SETTINGS.selectedMonth = selectedMonth;
 
     const fMetric = (val) => {
         if (val === undefined || val === null) return '0';
@@ -264,6 +315,33 @@ export default function App() {
         const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
         saveAs(blob, `sales_report_${selectedMonth}.csv`);
     };
+
+    const handleSettingsClick = () => {
+        if (isAdmin) setView('settings');
+        else setShowLogin(true);
+    };
+
+    const handleLogin = (e) => {
+        e.preventDefault();
+        try {
+            // Local login logic without backend API
+            if (loginId === 'admin' && loginPw === 'admin1234') {
+                setIsAdmin(true);
+                setShowLogin(false);
+                setLoginId('');
+                setLoginPw('');
+                setView('settings');
+            } else {
+                alert('아이디 또는 비밀번호가 올바르지 않습니다.');
+            }
+        } catch (error) {
+            alert('로그인 처리 중 오류가 발생했습니다.');
+        }
+    };
+
+    useEffect(() => {
+        setPath([{ level: view === 'dashboard_type' ? 'type' : 'root', id: 'all', name: '전체' }]);
+    }, [view]);
 
     const fontMap = {
         'Gmarket': 'font-gmarket',
@@ -362,10 +440,10 @@ export default function App() {
                                     </thead>
                                     <tbody className="text-center font-black">
                                         <tr className="text-slate-900 text-xl md:text-2xl tracking-tighter">
-                                            <td className="px-3 md:px-5 py-2.5 border-r border-slate-200">{SETTINGS.currentBusinessDay}</td>
-                                            <td className="px-3 md:px-5 py-2.5 border-r border-slate-200">{SETTINGS.businessDays[selectedMonth] || 20}</td>
-                                            <td className="px-3 md:px-5 py-2.5 border-r border-slate-200">{((SETTINGS.currentBusinessDay / (SETTINGS.businessDays[selectedMonth] || 20)) * 100).toFixed(1)}%</td>
-                                            <td className="px-3 md:px-5 py-2.5">{(100 / (SETTINGS.businessDays[selectedMonth] || 20)).toFixed(1)}%</td>
+                                            <td className="px-3 md:px-5 py-2.5 border-r border-slate-200">{bizDayInfo.currentBusinessDay}</td>
+                                            <td className="px-3 md:px-5 py-2.5 border-r border-slate-200">{bizDayInfo.totalBusinessDays}</td>
+                                            <td className="px-3 md:px-5 py-2.5 border-r border-slate-200">{((bizDayInfo.currentBusinessDay / (bizDayInfo.totalBusinessDays || 1)) * 100).toFixed(1)}%</td>
+                                            <td className="px-3 md:px-5 py-2.5">{(100 / (bizDayInfo.totalBusinessDays || 1)).toFixed(1)}%</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -387,8 +465,13 @@ export default function App() {
                                             className="bg-transparent text-sm md:text-base font-black text-slate-700 outline-none cursor-pointer appearance-none py-1"
                                         >
                                             <optgroup label="2026년">
+                                                <option value="2026-03">2026년 03월</option>
                                                 <option value="2026-02">2026년 02월</option>
                                                 <option value="2026-01">2026년 01월</option>
+                                            </optgroup>
+                                            <optgroup label="2025년">
+                                                <option value="2025-12">2025년 12월</option>
+                                                <option value="2025-11">2025년 11월</option>
                                             </optgroup>
                                         </select>
                                         <ChevronDown size={12} className="text-slate-400" />
@@ -662,47 +745,22 @@ export default function App() {
     );
 }
 
-function SidebarIcon({ active, icon: Icon, label, onClick }) {
-    return (
-        <button
-            onClick={onClick}
-            className={`flex items-center gap-4 w-full px-4 py-4 rounded-[22px] transition-all duration-300 group relative ${active
-                ? 'bg-white shadow-[0_10px_25px_-4px_rgba(99,102,241,0.12)] ring-1 ring-slate-100'
-                : 'text-slate-400 hover:text-slate-900 hover:bg-slate-50/50'
-                }`}
-        >
-            <div className={`p-2.5 rounded-[16px] transition-all duration-500 shadow-sm ${active
-                ? 'bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/40 scale-110'
-                : 'bg-slate-50 text-slate-400 group-hover:bg-white group-hover:text-indigo-500 group-hover:shadow-md'
-                }`}>
-                <Icon size={20} />
-            </div>
-            <span className={`text-[14px] font-bold tracking-tight transition-colors whitespace-nowrap ${active ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-700'}`}>
-                {label}
-            </span>
-            {active && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.8)]" />
-            )}
-
-            {!active && (
-                <motion.div
-                    initial={{ opacity: 0, x: -10 }}
-                    whileHover={{ opacity: 1, x: 0 }}
-                    className="absolute left-0 w-1 h-6 bg-indigo-500/20 rounded-r-full"
-                />
-            )}
-        </button>
-    );
-}
-
 function CustomLabel({ x, y, width, value, mainTab, analysisMode }) {
     if (value === undefined) return null;
     const isNeg = parseFloat(value) < 0;
     const label = value > 0 ? `+${value.toFixed(1)}` : value.toFixed(1);
-    const unit = analysisMode === 'goal' ? '%p' : '%';
+    const unit = (analysisMode === 'goal' || analysisMode === 'cumulative') ? '%p' : '%';
     return (
         <text x={x + width / 2} y={y - 12} fill={isNeg ? '#f43f5e' : '#10b981'} textAnchor="middle" fontSize={10} fontWeight="900">
             {label}{unit}
         </text>
     );
 }
+
+// Helper to format ISO without timezone issues
+const toIsoString = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+};
