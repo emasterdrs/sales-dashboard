@@ -130,6 +130,40 @@ export default function App() {
     const [fontFamily, setFontFamily] = useState('Gmarket');
     const [settingsSubView, setSettingsSubView] = useState('bizDays');
 
+    // Admin Login State
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [showLogin, setShowLogin] = useState(false);
+    const [loginId, setLoginId] = useState('');
+    const [loginPw, setLoginPw] = useState('');
+
+    const handleSettingsClick = () => {
+        if (isAdmin) setView('settings');
+        else setShowLogin(true);
+    };
+
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: loginId, password: loginPw })
+            });
+            const result = await res.json();
+            if (result.success) {
+                setIsAdmin(true);
+                setShowLogin(false);
+                setLoginId('');
+                setLoginPw('');
+                setView('settings');
+            } else {
+                alert(result.message || '로그인 실패');
+            }
+        } catch (error) {
+            alert('인터넷 연결 또는 서버 연결에 실패했습니다.');
+        }
+    };
+
     const [masterData, setMasterData] = useState(() => generateFullDataset());
     const [lastUpdated, setLastUpdated] = useState(() => {
         const now = new Date();
@@ -230,7 +264,7 @@ export default function App() {
                 <nav className="flex-1">
                     <div className="space-y-2">
                         <SidebarIcon active={view === 'dashboard'} icon={BarChart3} label="매출 실적" onClick={() => setView('dashboard')} />
-                        <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={() => setView('settings')} />
+                        <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={handleSettingsClick} />
 
                         <AnimatePresence>
                             {view === 'settings' && (
@@ -496,9 +530,52 @@ export default function App() {
 
                 <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[85%] bg-white/95 backdrop-blur-3xl border border-slate-200 rounded-[24px] p-2.5 flex items-center justify-around shadow-2xl z-50 ring-1 ring-slate-900/5">
                     <SidebarIcon active={view === 'dashboard'} icon={BarChart3} label="매출 실적" onClick={() => setView('dashboard')} color="indigo" />
-                    <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={() => setView('settings')} color="slate" />
+                    <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={handleSettingsClick} color="slate" />
                 </nav>
             </div>
+
+            {/* Login Modal */}
+            <AnimatePresence>
+                {showLogin && (
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
+                            className="bg-white rounded-[32px] p-10 w-[400px] shadow-2xl border border-slate-200/50"
+                        >
+                            <h2 className="text-2xl font-black text-slate-800 mb-8 tracking-tight">비밀번호가 필요합니다</h2>
+                            <form onSubmit={handleLogin} className="space-y-6">
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">관리자 아이디</label>
+                                    <input
+                                        type="text"
+                                        value={loginId}
+                                        onChange={(e) => setLoginId(e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-black text-slate-800 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                                        placeholder="admin"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">비밀번호</label>
+                                    <input
+                                        type="password"
+                                        value={loginPw}
+                                        onChange={(e) => setLoginPw(e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-black text-slate-800 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                                        placeholder="기본 비밀번호: admin1234"
+                                    />
+                                </div>
+                                <div className="flex gap-4 pt-4">
+                                    <button type="button" onClick={() => setShowLogin(false)} className="flex-1 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl text-sm font-black hover:bg-slate-50 transition-colors">취소</button>
+                                    <button type="submit" className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 transition-all">접속하기</button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

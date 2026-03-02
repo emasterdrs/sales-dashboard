@@ -68,25 +68,46 @@ export function SettingsView({ setMasterData, setLastUpdated, selectedMonth, sub
 function BusinessDaysSubView({ year }) {
     const calendarDataRaw = useMemo(() => getYearlyCalendarData(year), [year]);
     const [editingMonth, setEditingMonth] = useState(null);
+    const [holidayNames, setHolidayNames] = useState({});
+    const [toggledDays, setToggledDays] = useState({});
 
-    // Load from localStorage or initialize empty
-    const [holidayNames, setHolidayNames] = useState(() => {
-        const saved = localStorage.getItem(`holidayNames_${year}`);
-        return saved ? JSON.parse(saved) : {};
-    });
-    const [toggledDays, setToggledDays] = useState(() => {
-        const saved = localStorage.getItem(`toggledDays_${year}`);
-        return saved ? JSON.parse(saved) : {};
-    });
-
-    // Save to localStorage on change
+    // API에서 초기 데이터를 로드
     useEffect(() => {
-        localStorage.setItem(`holidayNames_${year}`, JSON.stringify(holidayNames));
-    }, [holidayNames, year]);
+        const loadData = async () => {
+            try {
+                const res = await fetch('/api/settings');
+                const data = await res.json();
+                setHolidayNames(data[`holidayNames_${year}`] || {});
+                setToggledDays(data[`toggledDays_${year}`] || {});
+            } catch (e) {
+                console.warn('Backend API connection failed, local mode fallback', e);
+            }
+        };
+        loadData();
+    }, [year]);
 
-    useEffect(() => {
-        localStorage.setItem(`toggledDays_${year}`, JSON.stringify(toggledDays));
-    }, [toggledDays, year]);
+    const toggleEditAndSave = async (month, isCurrentlyEditing) => {
+        if (isCurrentlyEditing) {
+            // 저장 처리
+            try {
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: `holidayNames_${year}`, value: holidayNames })
+                });
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: `toggledDays_${year}`, value: toggledDays })
+                });
+            } catch (e) {
+                console.warn('Backend save failed');
+            }
+            setEditingMonth(null);
+        } else {
+            setEditingMonth(month);
+        }
+    };
 
     const calendarData = useMemo(() => {
         return calendarDataRaw.map(m => ({
@@ -224,7 +245,7 @@ function BusinessDaysSubView({ year }) {
                                         영업일 제외 상세 내역
                                     </h4>
                                     <button
-                                        onClick={() => setEditingMonth(isEditing ? null : month)}
+                                        onClick={() => toggleEditAndSave(month, isEditing)}
                                         className={`px-4 py-1.5 rounded-lg text-[11px] font-black transition-all shadow-sm border ${isEditing
                                             ? 'bg-indigo-600 text-white border-indigo-600'
                                             : 'bg-white text-indigo-600 border-slate-200 hover:bg-slate-50'

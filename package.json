@@ -5,7 +5,7 @@
   "type": "module",
   "homepage": "https://emasterdrs.github.io/sales-dashboard/",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"node server.js\" \"vite\"",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -14,7 +14,10 @@
   },
   "dependencies": {
     "clsx": "^2.1.0",
+    "concurrently": "^9.2.1",
+    "cors": "^2.8.6",
     "date-fns": "^3.3.1",
+    "express": "^5.2.1",
     "file-saver": "^2.0.5",
     "framer-motion": "^10.18.0",
     "lucide-react": "^0.344.0",
