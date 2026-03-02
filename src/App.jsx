@@ -184,6 +184,20 @@ export default function App() {
     };
     const fCurrency = fMetric;
 
+    const fMetricNoSuffix = (val) => {
+        if (val === undefined || val === null) return '0';
+        if (metricType === 'amount') {
+            const config = CURRENCY_UNITS.find(u => u.key === amountUnit) || CURRENCY_UNITS[1];
+            const converted = val / config.divisor;
+            return converted.toLocaleString(undefined, { maximumFractionDigits: (converted >= 10 || amountUnit === '1') ? 0 : 1 });
+        } else {
+            const config = WEIGHT_UNITS.find(u => u.key === weightUnit) || WEIGHT_UNITS[0];
+            const converted = val / config.divisor;
+            return converted.toLocaleString(undefined, { maximumFractionDigits: converted >= 10 ? 0 : 2 });
+        }
+    };
+    const fCurrencyNoSuffix = fMetricNoSuffix;
+
     const formatDisplayMonth = (ym) => {
         const [y, m] = ym.split('-');
         return `${y}년 ${m}월`;
@@ -328,11 +342,11 @@ export default function App() {
                             <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition-all hover:border-indigo-500/30">
                                 <table className="text-[10px] md:text-[11px] leading-tight min-w-full">
                                     <thead className="bg-slate-50 border-b border-slate-200">
-                                        <tr className="text-slate-800 font-extrabold uppercase tracking-tighter whitespace-nowrap">
-                                            <th className="px-3 md:px-5 py-2 border-r border-slate-200">영업일</th>
-                                            <th className="px-3 md:px-5 py-2 border-r border-slate-200">총 영업일</th>
-                                            <th className="px-3 md:px-5 py-2 border-r border-slate-200">진도율</th>
-                                            <th className="px-3 md:px-5 py-2">1일 평균</th>
+                                        <tr className="text-slate-800 font-black text-[13px] md:text-[15px] uppercase tracking-tighter whitespace-nowrap">
+                                            <th className="px-3 md:px-5 py-3 border-r border-slate-200">영업일</th>
+                                            <th className="px-3 md:px-5 py-3 border-r border-slate-200">총 영업일</th>
+                                            <th className="px-3 md:px-5 py-3 border-r border-slate-200">진도율</th>
+                                            <th className="px-3 md:px-5 py-3">1일 평균</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-center font-black">
@@ -421,9 +435,28 @@ export default function App() {
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 ml-4 shrink-0">
-                                                    <button onClick={() => setMetricType('amount')} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
-                                                    <button onClick={() => setMetricType('weight')} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>중량</button>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 ml-4 shrink-0">
+                                                        <button onClick={() => setMetricType('amount')} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
+                                                        <button onClick={() => setMetricType('weight')} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>중량</button>
+                                                    </div>
+                                                    <div className="relative shrink-0 ml-1">
+                                                        <select
+                                                            value={metricType === 'amount' ? amountUnit : weightUnit}
+                                                            onChange={(e) => {
+                                                                if (metricType === 'amount') setAmountUnit(e.target.value);
+                                                                else setWeightUnit(e.target.value);
+                                                            }}
+                                                            className="appearance-none bg-white border border-slate-300 text-slate-600 text-[13px] font-black py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm cursor-pointer"
+                                                        >
+                                                            {metricType === 'amount' ? (
+                                                                CURRENCY_UNITS.map(u => <option key={u.key} value={u.key}>(단위: {u.label})</option>)
+                                                            ) : (
+                                                                WEIGHT_UNITS.map(u => <option key={u.key} value={u.key}>(단위: {u.label})</option>)
+                                                            )}
+                                                        </select>
+                                                        <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div className="overflow-x-auto custom-scrollbar flex-1 min-h-[400px]">
@@ -449,8 +482,8 @@ export default function App() {
                                                                     <span className="inline-block w-2 h-5 rounded-full mr-3 align-middle" style={{ background: TEAM_COLORS[item.name]?.main || '#e2e8f0' }} />
                                                                     {item.name}
                                                                 </td>
-                                                                <td className="py-4 px-2 font-mono text-slate-500 text-right text-[15px] font-bold align-middle">{fCurrency(item.target)}</td>
-                                                                <td className="py-4 px-2 font-mono text-slate-800 text-right text-[15px] font-extrabold align-middle">{fCurrency(item.actual)}</td>
+                                                                <td className="py-4 px-2 font-mono text-slate-500 text-right text-[15px] font-bold align-middle">{fCurrencyNoSuffix(item.target)}</td>
+                                                                <td className="py-4 px-2 font-mono text-slate-800 text-right text-[15px] font-extrabold align-middle">{fCurrencyNoSuffix(item.actual)}</td>
                                                                 <td className="py-4 px-2 text-center align-middle">
                                                                     <span className="font-extrabold text-slate-900 text-[15px] block">{fPercent(item.achievement)}</span>
                                                                 </td>
@@ -460,7 +493,7 @@ export default function App() {
                                                                     </span>
                                                                 </td>
                                                                 <td className={`py-4 pr-6 font-mono text-right font-extrabold text-[15px] align-middle ${item.overShort >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
-                                                                    {item.overShort > 0 ? `+${fCurrency(item.overShort)}` : fCurrency(item.overShort)}
+                                                                    {item.overShort > 0 ? `+${fCurrencyNoSuffix(item.overShort)}` : fCurrencyNoSuffix(item.overShort)}
                                                                 </td>
                                                             </tr>
                                                         ))}
@@ -468,8 +501,8 @@ export default function App() {
                                                     <tfoot className="bg-slate-50/80 border-t-2 border-slate-200">
                                                         <tr className="font-extrabold text-[15px] md:text-[16px]">
                                                             <td className="py-4 px-6 text-slate-900 uppercase tracking-tight align-middle">합계</td>
-                                                            <td className="py-4 px-2 font-mono text-slate-600 text-right align-middle">{fCurrency(summary.target)}</td>
-                                                            <td className="py-4 px-2 font-mono text-slate-900 text-right align-middle">{fCurrency(summary.actual)}</td>
+                                                            <td className="py-4 px-2 font-mono text-slate-600 text-right align-middle">{fCurrencyNoSuffix(summary.target)}</td>
+                                                            <td className="py-4 px-2 font-mono text-slate-900 text-right align-middle">{fCurrencyNoSuffix(summary.actual)}</td>
                                                             <td className="py-4 px-2 text-center align-middle">
                                                                 <span className="text-slate-900 tracking-tighter">{fPercent(summary.achievementRate)}</span>
                                                             </td>
@@ -479,7 +512,7 @@ export default function App() {
                                                                 </span>
                                                             </td>
                                                             <td className={`py-4 pr-6 font-mono text-right align-middle ${summary.overShort >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
-                                                                {summary.overShort > 0 ? `+${fCurrency(summary.overShort)}` : fCurrency(summary.overShort)}
+                                                                {summary.overShort > 0 ? `+${fCurrencyNoSuffix(summary.overShort)}` : fCurrencyNoSuffix(summary.overShort)}
                                                             </td>
                                                         </tr>
                                                     </tfoot>
