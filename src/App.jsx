@@ -290,16 +290,6 @@ export default function App() {
                                 </table>
                             </div>
                         </div>
-                        {path.length > 1 ? (
-                            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-2 bg-slate-50 px-4 rounded-xl border border-slate-200 self-start mx-10 mt-[-20px] mb-6 shadow-sm">
-                                {path.map((p, i) => (
-                                    <button key={i} onClick={() => setPath(path.slice(0, i + 1))} className={`text-[11px] font-bold px-3 py-1 transition-all flex items-center gap-2 ${i === path.length - 1 ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
-                                        {p.name}
-                                        {i < path.length - 1 && <ChevronRight size={10} className="text-slate-300" />}
-                                    </button>
-                                ))}
-                            </div>
-                        ) : null}
                     </div>
                 </header>
 
@@ -359,10 +349,22 @@ export default function App() {
                                         {/* Detailed Team Analysis Table (LEFT - 3/5) */}
                                         <div className="lg:col-span-3 bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm flex flex-col">
                                             <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center whitespace-nowrap overflow-x-auto no-scrollbar">
-                                                <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                                    <Activity size={16} className="text-indigo-500" />
-                                                    팀별 분석 현황
-                                                </h3>
+                                                <div className="flex items-center gap-4">
+                                                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 shrink-0">
+                                                        <Activity size={16} className="text-indigo-500" />
+                                                        분석 현황
+                                                    </h3>
+                                                    {path.length > 1 && (
+                                                        <div className="flex items-center gap-0.5 px-2.5 py-1 bg-indigo-50/50 rounded-full border border-indigo-100 shadow-sm overflow-hidden">
+                                                            {path.map((p, i) => (
+                                                                <button key={i} onClick={() => setPath(path.slice(0, i + 1))} className={`text-[10px] font-black px-1.5 py-0.5 transition-all flex items-center gap-1 rounded-md ${i === path.length - 1 ? 'bg-indigo-600 text-white' : 'text-indigo-400 hover:text-indigo-600 hover:bg-white'}`}>
+                                                                    {p.name}
+                                                                    {i < path.length - 1 && <ChevronRight size={8} className={i === path.length - 1 ? 'text-white/50' : 'text-indigo-200'} />}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 ml-4 shrink-0">
                                                     <button onClick={() => setMetricType('amount')} className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
                                                     <button onClick={() => setMetricType('weight')} className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>중량</button>
