@@ -344,7 +344,7 @@ export default function App() {
                             <div className="hidden"></div>
 
                             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                                <div className="xl:col-span-3">
+                                <div className="xl:col-span-4">
                                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                                         {/* Detailed Team Analysis Table (LEFT - 3/5) */}
                                         <div className="lg:col-span-3 bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm flex flex-col">
@@ -462,27 +462,6 @@ export default function App() {
                                     </div>
                                 </div>
 
-                                <div className="space-y-6">
-                                    <div className="bg-white border border-slate-200 rounded-[24px] p-8 text-slate-800 relative overflow-hidden group shadow-md hover:shadow-xl transition-all border-l-8 border-l-indigo-500">
-                                        <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-50 rounded-full blur-3xl group-hover:scale-150 transition-transform" />
-                                        <Globe size={60} className="absolute bottom-4 right-4 text-indigo-50 opacity-50" />
-                                        <h4 className="text-sm font-black uppercase tracking-[0.2em] text-indigo-400 mb-2">회사 연간 목표</h4>
-                                        <p className="text-4xl font-black tracking-tighter text-slate-900 mb-6 italic">2026년 목표</p>
-                                        <div className="space-y-4">
-                                            <div className="flex justify-between text-base font-black">
-                                                <span className="text-slate-500 flex items-center gap-2">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                                                    연간 진척도
-                                                </span>
-                                                <span className="text-indigo-600 text-2xl">31.4%</span>
-                                            </div>
-                                            <div className="h-4 bg-slate-100 rounded-full overflow-hidden p-0.5">
-                                                <div className="h-full bg-gradient-to-r from-indigo-500 to-indigo-700 rounded-full shadow-lg shadow-indigo-600/30 flex items-center justify-end px-2" style={{ width: '31.4%' }}>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     )}
