@@ -371,53 +371,57 @@ export default function App() {
                                                 </div>
                                             </div>
                                             <div className="overflow-x-auto custom-scrollbar flex-1 min-h-[400px]">
-                                                <table className="w-full text-left text-sm table-fixed min-w-[500px]">
+                                                <table className="w-full text-left table-fixed min-w-[600px]">
                                                     <thead className="sticky top-0 z-10">
-                                                        <tr className="text-slate-500 font-black border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-tighter">
-                                                            <th className="py-4 px-6 w-32">구분</th>
-                                                            <th className="py-4 text-right">실적</th>
-                                                            <th className="py-4 text-right">목표</th>
-                                                            <th className="py-4 text-center w-24">달성%</th>
-                                                            <th className="py-4 pr-6 text-right w-28">과부족</th>
+                                                        <tr className="text-slate-500 font-black border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-tighter">
+                                                            <th className="py-5 px-6 w-40">
+                                                                {path.length === 1 ? '영업팀' :
+                                                                    path.length === 2 ? '영업사원' :
+                                                                        path.length === 3 ? '거래처' : '품목'}
+                                                            </th>
+                                                            <th className="py-5 text-right w-32">목표</th>
+                                                            <th className="py-5 text-right w-32">실적</th>
+                                                            <th className="py-5 text-center w-28 text-indigo-600">달성율(%)</th>
+                                                            <th className="py-5 pr-6 text-right w-32">과부족</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-100">
                                                         {drillDownData.map((item, i) => (
                                                             <tr key={i} onClick={() => handleDrillDown(item)} className="hover:bg-slate-50 transition-colors cursor-pointer group">
-                                                                <td className="py-4 px-6 font-black text-slate-800 group-hover:text-indigo-600 transition-colors uppercase tracking-tight truncate">
-                                                                    <span className="inline-block w-1.5 h-4 rounded-full mr-3" style={{ background: TEAM_COLORS[item.name]?.main || '#e2e8f0' }} />
+                                                                <td className="py-5 px-6 font-black text-slate-800 text-lg group-hover:text-indigo-600 transition-colors uppercase tracking-tight truncate">
+                                                                    <span className="inline-block w-2 h-5 rounded-full mr-3 align-middle" style={{ background: TEAM_COLORS[item.name]?.main || '#e2e8f0' }} />
                                                                     {item.name}
                                                                 </td>
-                                                                <td className="py-4 font-mono text-slate-700 text-right">{fCurrency(item.actual)}</td>
-                                                                <td className="py-4 font-mono text-slate-400 text-right">{fCurrency(item.target)}</td>
-                                                                <td className="py-4 text-center">
+                                                                <td className="py-5 font-mono text-slate-400 text-right text-base">{fCurrency(item.target)}</td>
+                                                                <td className="py-5 font-mono text-slate-700 text-right text-base font-bold">{fCurrency(item.actual)}</td>
+                                                                <td className="py-5 text-center">
                                                                     <div className="flex flex-col items-center">
-                                                                        <span className="font-bold text-slate-900">{fPercent(item.achievement)}</span>
-                                                                        <div className="w-12 h-1 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                                                                        <span className="font-extrabold text-indigo-600 text-lg">{fPercent(item.achievement)}</span>
+                                                                        <div className="w-16 h-1.5 bg-slate-100 rounded-full mt-1.5 overflow-hidden">
                                                                             <div className="h-full bg-indigo-500" style={{ width: `${Math.min(item.achievement, 100)}%` }}></div>
                                                                         </div>
                                                                     </div>
                                                                 </td>
-                                                                <td className={`py-4 pr-6 font-mono text-right font-black ${item.overShort >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                <td className={`py-5 pr-6 font-mono text-right font-black text-lg ${item.overShort >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                                                     {item.overShort > 0 ? `+${fCurrency(item.overShort)}` : fCurrency(item.overShort)}
                                                                 </td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
                                                     <tfoot className="bg-slate-50/80 border-t-2 border-slate-200">
-                                                        <tr className="font-black text-sm">
-                                                            <td className="py-5 px-6 text-slate-900 uppercase tracking-wider">합계</td>
-                                                            <td className="py-5 font-mono text-indigo-700 text-right text-[14px]">{fCurrency(summary.actual)}</td>
-                                                            <td className="py-5 font-mono text-slate-600 text-right text-[14px]">{fCurrency(summary.target)}</td>
-                                                            <td className="py-5 text-center">
+                                                        <tr className="font-black">
+                                                            <td className="py-6 px-6 text-slate-900 uppercase tracking-wider text-xl">합계</td>
+                                                            <td className="py-6 font-mono text-slate-600 text-right text-lg">{fCurrency(summary.target)}</td>
+                                                            <td className="py-6 font-mono text-indigo-700 text-right text-xl">{fCurrency(summary.actual)}</td>
+                                                            <td className="py-6 text-center">
                                                                 <div className="flex flex-col items-center">
-                                                                    <span className="text-indigo-600 text-[14px]">{fPercent(summary.achievementRate)}</span>
-                                                                    <div className="w-20 h-2 bg-slate-200 rounded-full mt-1 overflow-hidden">
-                                                                        <div className="h-full bg-indigo-600" style={{ width: `${Math.min(summary.achievementRate, 100)}%` }}></div>
+                                                                    <span className="text-indigo-600 text-2xl tracking-tighter">{fPercent(summary.achievementRate)}</span>
+                                                                    <div className="w-24 h-2.5 bg-slate-200 rounded-full mt-2 overflow-hidden shadow-inner">
+                                                                        <div className="h-full bg-indigo-600 shadow-lg shadow-indigo-600/30" style={{ width: `${Math.min(summary.achievementRate, 100)}%` }}></div>
                                                                     </div>
                                                                 </div>
                                                             </td>
-                                                            <td className={`py-5 pr-6 font-mono text-right text-[14px] ${summary.overShort >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                            <td className={`py-6 pr-6 font-mono text-right text-xl ${summary.overShort >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                                 {summary.overShort > 0 ? `+${fCurrency(summary.overShort)}` : fCurrency(summary.overShort)}
                                                             </td>
                                                         </tr>
@@ -459,57 +463,25 @@ export default function App() {
                                 </div>
 
                                 <div className="space-y-6">
-                                    <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
-                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                                            <h3 className="text-xs font-black text-slate-800 italic uppercase tracking-wider flex items-center gap-2">
-                                                <PieChartIcon size={16} className="text-indigo-600" />
-                                                시장 점유율
-                                            </h3>
-                                            <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                                                <button onClick={() => setMetricType('amount')} className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
-                                                <button onClick={() => setMetricType('weight')} className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>중량</button>
+                                    <div className="bg-white border border-slate-200 rounded-[24px] p-8 text-slate-800 relative overflow-hidden group shadow-md hover:shadow-xl transition-all border-l-8 border-l-indigo-500">
+                                        <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-50 rounded-full blur-3xl group-hover:scale-150 transition-transform" />
+                                        <Globe size={60} className="absolute bottom-4 right-4 text-indigo-50 opacity-50" />
+                                        <h4 className="text-sm font-black uppercase tracking-[0.2em] text-indigo-400 mb-2">회사 연간 목표</h4>
+                                        <p className="text-4xl font-black tracking-tighter text-slate-900 mb-6 italic">2026년 목표</p>
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between text-base font-black">
+                                                <span className="text-slate-500 flex items-center gap-2">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                                    연간 진척도
+                                                </span>
+                                                <span className="text-indigo-600 text-2xl">31.4%</span>
                                             </div>
-                                        </div>
-                                        <div className="h-[200px]">
-                                            <ResponsiveContainer>
-                                                <PieChart>
-                                                    <Pie data={drillDownData.slice(0, 5)} dataKey="actual" cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={8} stroke="#fff" strokeWidth={2}>
-                                                        {drillDownData.map((e, i) => <Cell key={i} fill={TEAM_COLORS[e.name]?.main || '#e2e8f0'} />)}
-                                                    </Pie>
-                                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', background: '#fff', fontSize: '10px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                                                </PieChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                        <div className="space-y-2.5 mt-4">
-                                            {drillDownData.slice(0, 4).map((item, i) => (
-                                                <div key={i} className="flex items-center justify-between text-[10px]">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: TEAM_COLORS[item.name]?.main || '#e2e8f0' }} />
-                                                        <span className="font-bold text-slate-400">{item.name}</span>
-                                                    </div>
-                                                    <span className="font-black text-slate-800">{((item.actual / summary.actual) * 100).toFixed(1)}%</span>
+                                            <div className="h-4 bg-slate-100 rounded-full overflow-hidden p-0.5">
+                                                <div className="h-full bg-gradient-to-r from-indigo-500 to-indigo-700 rounded-full shadow-lg shadow-indigo-600/30 flex items-center justify-end px-2" style={{ width: '31.4%' }}>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-white border border-slate-200 rounded-[24px] p-6 text-slate-800 relative overflow-hidden group shadow-sm hover:shadow-md transition-all">
-                                        <div className="absolute -top-6 -right-6 w-24 h-24 bg-indigo-50 rounded-full blur-2xl group-hover:scale-150 transition-transform" />
-                                        <Globe size={40} className="absolute bottom-2 right-2 text-indigo-100" />
-                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">회사 연간 목표</h4>
-                                        <p className="text-2xl font-black tracking-tighter text-slate-900 mb-4">2026년 목표</p>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between text-[10px] font-bold">
-                                                <span className="text-slate-500">연간 진척도</span>
-                                                <span className="text-indigo-600">31.4%</span>
-                                            </div>
-                                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                                <div className="h-full bg-indigo-600 rounded-full shadow-lg shadow-indigo-600/30" style={{ width: '31.4%' }}></div>
                                             </div>
                                         </div>
                                     </div>
-
-                                    <Quote />
                                 </div>
                             </div>
                         </div>
