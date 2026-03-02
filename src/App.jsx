@@ -327,20 +327,20 @@ export default function App() {
                         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 md:gap-6 shrink-0 w-full md:w-auto">
                             <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition-all hover:border-indigo-500/30">
                                 <table className="text-[10px] md:text-[11px] leading-tight min-w-full">
-                                    <thead className="bg-slate-100 border-b border-slate-200">
-                                        <tr className="text-slate-500 font-black uppercase tracking-tighter whitespace-nowrap">
-                                            <th className="px-3 md:px-4 py-1.5 md:py-2 border-r border-slate-200 text-sm md:text-base">영업일</th>
-                                            <th className="px-3 md:px-4 py-1.5 md:py-2 border-r border-slate-200 text-sm md:text-base">총 영업일</th>
-                                            <th className="px-3 md:px-4 py-1.5 md:py-2 text-indigo-600 font-black text-sm md:text-base">진도율</th>
-                                            <th className="px-3 md:px-4 py-1.5 md:py-2 text-sm md:text-base">1일 평균</th>
+                                    <thead className="bg-slate-50 border-b border-slate-200">
+                                        <tr className="text-slate-800 font-extrabold uppercase tracking-tighter whitespace-nowrap">
+                                            <th className="px-3 md:px-5 py-2 border-r border-slate-200">영업일</th>
+                                            <th className="px-3 md:px-5 py-2 border-r border-slate-200">총 영업일</th>
+                                            <th className="px-3 md:px-5 py-2 border-r border-slate-200">진도율</th>
+                                            <th className="px-3 md:px-5 py-2">1일 평균</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-center font-black">
-                                        <tr>
-                                            <td className="px-3 md:px-4 py-1.5 md:py-2 text-slate-900 text-lg md:text-xl border-r border-slate-200">{SETTINGS.currentBusinessDay}</td>
-                                            <td className="px-3 md:px-4 py-1.5 md:py-2 text-slate-500 text-lg md:text-xl border-r border-slate-200">{SETTINGS.businessDays[selectedMonth] || 20}</td>
-                                            <td className="px-3 md:px-4 py-1.5 md:py-2 text-indigo-600 border-r border-slate-200 text-xl md:text-2xl tracking-tighter">{((SETTINGS.currentBusinessDay / (SETTINGS.businessDays[selectedMonth] || 20)) * 100).toFixed(1)}%</td>
-                                            <td className="px-3 md:px-4 py-1.5 md:py-2 text-slate-400 text-lg md:text-xl font-mono">{(100 / (SETTINGS.businessDays[selectedMonth] || 20)).toFixed(1)}%</td>
+                                        <tr className="text-slate-900 text-xl md:text-2xl tracking-tighter">
+                                            <td className="px-3 md:px-5 py-2.5 border-r border-slate-200">{SETTINGS.currentBusinessDay}</td>
+                                            <td className="px-3 md:px-5 py-2.5 border-r border-slate-200">{SETTINGS.businessDays[selectedMonth] || 20}</td>
+                                            <td className="px-3 md:px-5 py-2.5 border-r border-slate-200">{((SETTINGS.currentBusinessDay / (SETTINGS.businessDays[selectedMonth] || 20)) * 100).toFixed(1)}%</td>
+                                            <td className="px-3 md:px-5 py-2.5">{(100 / (SETTINGS.businessDays[selectedMonth] || 20)).toFixed(1)}%</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -427,57 +427,58 @@ export default function App() {
                                                 </div>
                                             </div>
                                             <div className="overflow-x-auto custom-scrollbar flex-1 min-h-[400px]">
-                                                <table className="w-full text-left table-fixed min-w-[600px]">
-                                                    <thead className="sticky top-0 z-10">
-                                                        <tr className="text-slate-500 font-black border-b border-slate-100 bg-slate-50 text-sm md:text-base uppercase tracking-tighter">
-                                                            <th className="py-5 px-6 w-40">
+                                                <table className="w-full text-left table-fixed min-w-[650px]">
+                                                    <thead className="sticky top-0 z-10 bg-slate-50 border-b-2 border-slate-200">
+                                                        <tr className="text-slate-700 font-extrabold text-[13px] md:text-[14px] uppercase tracking-tighter align-middle">
+                                                            <th className="py-3.5 px-6 w-[20%] text-left">
                                                                 {path.length === 1 ? '영업팀' :
                                                                     path.length === 2 ? '영업사원' :
                                                                         path.length === 3 ? '거래처' : '품목'}
                                                             </th>
-                                                            <th className="py-5 text-right w-32">목표</th>
-                                                            <th className="py-5 text-right w-32">실적</th>
-                                                            <th className="py-5 text-center w-28 text-indigo-600">달성율(%)</th>
-                                                            <th className="py-5 pr-6 text-right w-32">과부족</th>
+                                                            <th className="py-3.5 px-2 text-right w-[15%]">목표</th>
+                                                            <th className="py-3.5 px-2 text-right w-[15%]">실적</th>
+                                                            <th className="py-3.5 px-2 text-center w-[15%]">달성율(%)</th>
+                                                            <th className="py-3.5 px-2 text-center w-[15%]">과부족(%)</th>
+                                                            <th className="py-3.5 pr-6 text-right w-[20%]">과부족({metricType === 'amount' ? '금액' : '수량'})</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-100">
                                                         {drillDownData.map((item, i) => (
                                                             <tr key={i} onClick={() => handleDrillDown(item)} className="hover:bg-slate-50 transition-colors cursor-pointer group">
-                                                                <td className="py-5 px-6 font-black text-slate-800 text-lg group-hover:text-indigo-600 transition-colors uppercase tracking-tight truncate">
+                                                                <td className="py-4 px-6 font-black text-slate-800 text-[15px] group-hover:text-indigo-600 transition-colors tracking-tight truncate align-middle">
                                                                     <span className="inline-block w-2 h-5 rounded-full mr-3 align-middle" style={{ background: TEAM_COLORS[item.name]?.main || '#e2e8f0' }} />
                                                                     {item.name}
                                                                 </td>
-                                                                <td className="py-5 font-mono text-slate-400 text-right text-base">{fCurrency(item.target)}</td>
-                                                                <td className="py-5 font-mono text-slate-700 text-right text-base font-bold">{fCurrency(item.actual)}</td>
-                                                                <td className="py-5 text-center">
-                                                                    <div className="flex flex-col items-center">
-                                                                        <span className="font-extrabold text-indigo-600 text-lg">{fPercent(item.achievement)}</span>
-                                                                        <div className="w-16 h-1.5 bg-slate-100 rounded-full mt-1.5 overflow-hidden">
-                                                                            <div className="h-full bg-indigo-500" style={{ width: `${Math.min(item.achievement, 100)}%` }}></div>
-                                                                        </div>
-                                                                    </div>
+                                                                <td className="py-4 px-2 font-mono text-slate-500 text-right text-[15px] font-bold align-middle">{fCurrency(item.target)}</td>
+                                                                <td className="py-4 px-2 font-mono text-slate-800 text-right text-[15px] font-extrabold align-middle">{fCurrency(item.actual)}</td>
+                                                                <td className="py-4 px-2 text-center align-middle">
+                                                                    <span className="font-extrabold text-slate-900 text-[15px] block">{fPercent(item.achievement)}</span>
                                                                 </td>
-                                                                <td className={`py-5 pr-6 font-mono text-right font-black text-lg ${item.overShort >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                <td className="py-4 px-2 text-center align-middle">
+                                                                    <span className={`font-extrabold text-[15px] ${item.progressGap >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
+                                                                        {item.progressGap > 0 ? '+' : ''}{item.progressGap.toFixed(1)}%
+                                                                    </span>
+                                                                </td>
+                                                                <td className={`py-4 pr-6 font-mono text-right font-extrabold text-[15px] align-middle ${item.overShort >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
                                                                     {item.overShort > 0 ? `+${fCurrency(item.overShort)}` : fCurrency(item.overShort)}
                                                                 </td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
                                                     <tfoot className="bg-slate-50/80 border-t-2 border-slate-200">
-                                                        <tr className="font-black">
-                                                            <td className="py-6 px-6 text-slate-900 uppercase tracking-wider text-xl">합계</td>
-                                                            <td className="py-6 font-mono text-slate-600 text-right text-lg">{fCurrency(summary.target)}</td>
-                                                            <td className="py-6 font-mono text-indigo-700 text-right text-xl">{fCurrency(summary.actual)}</td>
-                                                            <td className="py-6 text-center">
-                                                                <div className="flex flex-col items-center">
-                                                                    <span className="text-indigo-600 text-2xl tracking-tighter">{fPercent(summary.achievementRate)}</span>
-                                                                    <div className="w-24 h-2.5 bg-slate-200 rounded-full mt-2 overflow-hidden shadow-inner">
-                                                                        <div className="h-full bg-indigo-600 shadow-lg shadow-indigo-600/30" style={{ width: `${Math.min(summary.achievementRate, 100)}%` }}></div>
-                                                                    </div>
-                                                                </div>
+                                                        <tr className="font-extrabold text-[15px] md:text-[16px]">
+                                                            <td className="py-4 px-6 text-slate-900 uppercase tracking-tight align-middle">합계</td>
+                                                            <td className="py-4 px-2 font-mono text-slate-600 text-right align-middle">{fCurrency(summary.target)}</td>
+                                                            <td className="py-4 px-2 font-mono text-slate-900 text-right align-middle">{fCurrency(summary.actual)}</td>
+                                                            <td className="py-4 px-2 text-center align-middle">
+                                                                <span className="text-slate-900 tracking-tighter">{fPercent(summary.achievementRate)}</span>
                                                             </td>
-                                                            <td className={`py-6 pr-6 font-mono text-right text-xl ${summary.overShort >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                            <td className="py-4 px-2 text-center align-middle">
+                                                                <span className={`tracking-tighter ${summary.progressGap >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
+                                                                    {summary.progressGap > 0 ? '+' : ''}{summary.progressGap.toFixed(1)}%
+                                                                </span>
+                                                            </td>
+                                                            <td className={`py-4 pr-6 font-mono text-right align-middle ${summary.overShort >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
                                                                 {summary.overShort > 0 ? `+${fCurrency(summary.overShort)}` : fCurrency(summary.overShort)}
                                                             </td>
                                                         </tr>
