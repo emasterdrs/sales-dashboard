@@ -299,6 +299,9 @@ function OrganizationSubView({ setMasterData, masterData }) {
     const [editingSpId, setEditingSpId] = useState(null);
     const [spEditName, setSpEditName] = useState('');
 
+    const [selectedTeamIds, setSelectedTeamIds] = useState(new Set());
+    const [selectedSpIds, setSelectedSpIds] = useState(new Set());
+
     useEffect(() => {
         try {
             const savedData = localStorage.getItem('dashboard_settings');
@@ -346,6 +349,32 @@ function OrganizationSubView({ setMasterData, masterData }) {
         setTeams(updated);
         if (selectedTeam === id) setSelectedTeam(null);
         saveChanges(updated, salespersons);
+
+        if (selectedTeamIds.has(id)) {
+            const newSet = new Set(selectedTeamIds);
+            newSet.delete(id);
+            setSelectedTeamIds(newSet);
+        }
+    };
+
+    const handleToggleSelectAllTeams = (e) => {
+        if (e.target.checked) setSelectedTeamIds(new Set(teams.map(t => t.id)));
+        else setSelectedTeamIds(new Set());
+    };
+    const handleToggleSelectTeam = (id) => {
+        const newSet = new Set(selectedTeamIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedTeamIds(newSet);
+    };
+    const handleDeleteSelectedTeams = () => {
+        if (selectedTeamIds.size === 0) return;
+        if (!window.confirm(`선택한 ${selectedTeamIds.size}개의 팀을 삭제하시겠습니까? 데이터는 "기타" 팀으로 집계됩니다.`)) return;
+        const updated = teams.filter(t => !selectedTeamIds.has(t.id));
+        setTeams(updated);
+        if (selectedTeamIds.has(selectedTeam)) setSelectedTeam(null);
+        saveChanges(updated, salespersons);
+        setSelectedTeamIds(new Set());
     };
 
     const handleSaveTeamEdit = (id) => {
@@ -369,6 +398,31 @@ function OrganizationSubView({ setMasterData, masterData }) {
         const updated = salespersons.filter(s => s.id !== id);
         setSalespersons(updated);
         saveChanges(teams, updated);
+
+        if (selectedSpIds.has(id)) {
+            const newSet = new Set(selectedSpIds);
+            newSet.delete(id);
+            setSelectedSpIds(newSet);
+        }
+    };
+
+    const handleToggleSelectAllSps = (e, currentList) => {
+        if (e.target.checked) setSelectedSpIds(new Set(currentList.map(s => s.id)));
+        else setSelectedSpIds(new Set());
+    };
+    const handleToggleSelectSp = (id) => {
+        const newSet = new Set(selectedSpIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedSpIds(newSet);
+    };
+    const handleDeleteSelectedSps = () => {
+        if (selectedSpIds.size === 0) return;
+        if (!window.confirm(`선택한 ${selectedSpIds.size}명의 영업사원을 삭제하시겠습니까?`)) return;
+        const updated = salespersons.filter(s => !selectedSpIds.has(s.id));
+        setSalespersons(updated);
+        saveChanges(teams, updated);
+        setSelectedSpIds(new Set());
     };
 
     const handleMoveTeamUp = (e, index) => {
@@ -413,13 +467,41 @@ function OrganizationSubView({ setMasterData, masterData }) {
                 </>
             }>
                 <div className="space-y-3">
+                    {teams.length > 0 && (
+                        <div className="flex items-center justify-between px-4 py-2 bg-slate-50 rounded-2xl border border-slate-200">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedTeamIds.size === teams.length && teams.length > 0}
+                                    onChange={handleToggleSelectAllTeams}
+                                    className="w-4 h-4 text-indigo-500 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                                />
+                                <span className="text-sm font-black text-slate-700">전체 선택</span>
+                            </label>
+                            {selectedTeamIds.size > 0 && (
+                                <button
+                                    onClick={handleDeleteSelectedTeams}
+                                    className="text-xs font-bold px-4 py-1.5 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600 transition-colors border border-rose-100"
+                                >
+                                    선택 항목 삭제 ({selectedTeamIds.size})
+                                </button>
+                            )}
+                        </div>
+                    )}
                     {teams.map((team, index) => (
                         <div
                             key={team.id || typeof team === 'string' ? team : `team-${Math.random()}`}
                             className={`flex flex-col md:flex-row md:items-center justify-between p-4 cursor-pointer rounded-2xl border shadow-sm transition-all ${selectedTeam === team.id ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-500/20' : 'bg-white border-slate-100'}`}
                             onClick={() => setSelectedTeam(team.id)}
                         >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-4">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedTeamIds.has(team.id)}
+                                    onChange={() => handleToggleSelectTeam(team.id)}
+                                    className="w-4 h-4 text-indigo-500 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer shrink-0"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
                                 {editingTeamId === team.id ? (
                                     <div className="flex items-center gap-2">
                                         <input
@@ -467,6 +549,27 @@ function OrganizationSubView({ setMasterData, masterData }) {
             <SettingCard title="영업사원 마스터" icon={Building2} desc={selectedTeam ? `선택된 팀: ${teams.find(t => t.id === selectedTeam)?.name || '이름 없음'}` : "먼저 대상 팀을 선택해주세요"}>
                 {selectedTeam ? (
                     <div className="space-y-3">
+                        {currentSpList.length > 0 && (
+                            <div className="flex items-center justify-between px-4 py-2 bg-slate-50 rounded-2xl border border-slate-200">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={currentSpList.length > 0 && currentSpList.every(s => selectedSpIds.has(s.id))}
+                                        onChange={(e) => handleToggleSelectAllSps(e, currentSpList)}
+                                        className="w-4 h-4 text-emerald-500 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                                    />
+                                    <span className="text-sm font-black text-slate-700">전체 선택</span>
+                                </label>
+                                {selectedSpIds.size > 0 && (
+                                    <button
+                                        onClick={handleDeleteSelectedSps}
+                                        className="text-xs font-bold px-4 py-1.5 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600 transition-colors border border-rose-100"
+                                    >
+                                        선택 항목 삭제 ({Array.from(selectedSpIds).filter(id => currentSpList.some(s => s.id === id)).length})
+                                    </button>
+                                )}
+                            </div>
+                        )}
                         {currentSpList.length === 0 && (
                             <div className="py-8 text-center text-sm font-bold text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                                 등록된 담당 사원이 없습니다.
@@ -474,8 +577,14 @@ function OrganizationSubView({ setMasterData, masterData }) {
                         )}
                         {currentSpList.map(sp => (
                             <div key={sp.id} className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 font-black text-xs">
+                                <div className="flex items-center gap-4">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedSpIds.has(sp.id)}
+                                        onChange={() => handleToggleSelectSp(sp.id)}
+                                        className="w-4 h-4 text-emerald-500 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer shrink-0"
+                                    />
+                                    <div className="w-8 h-8 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 font-black text-xs shrink-0">
                                         {sp?.name?.[0] || '?'}
                                     </div>
                                     {editingSpId === sp.id ? (
@@ -642,7 +751,14 @@ function TypesSubView({ masterData, setMasterData }) {
                         key={type.id || typeof type === 'string' ? type : `type-${index}`}
                         className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-2xl border border-slate-100 shadow-sm bg-white"
                     >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4">
+                            <input
+                                type="checkbox"
+                                checked={selectedTypeIds.has(type.id)}
+                                onChange={() => handleToggleSelectType(type.id)}
+                                className="w-4 h-4 text-amber-500 rounded border-slate-300 focus:ring-amber-500 cursor-pointer shrink-0"
+                                onClick={(e) => e.stopPropagation()}
+                            />
                             {editingTypeId === type.id ? (
                                 <div className="flex items-center gap-2">
                                     <input
