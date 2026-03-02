@@ -427,6 +427,12 @@ function OrganizationSubView({ setMasterData, masterData }) {
                                             type="text"
                                             value={teamEditName}
                                             onChange={(e) => setTeamEditName(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.stopPropagation();
+                                                    handleSaveTeamEdit(team.id);
+                                                }
+                                            }}
                                             className="px-3 py-1.5 border border-indigo-200 rounded-lg text-sm font-black outline-none focus:ring-2 ring-indigo-500/30"
                                             onClick={(e) => e.stopPropagation()}
                                         />
@@ -479,6 +485,12 @@ function OrganizationSubView({ setMasterData, masterData }) {
                                                 type="text"
                                                 value={spEditName}
                                                 onChange={(e) => setSpEditName(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.stopPropagation();
+                                                        handleSaveSpEdit(sp.id);
+                                                    }
+                                                }}
                                                 className="px-2 py-1 border border-emerald-200 rounded-md text-[13px] font-black outline-none focus:ring-2 ring-emerald-500/30"
                                             />
                                             <button onClick={() => handleSaveSpEdit(sp.id)} className="text-[11px] bg-emerald-600 text-white px-2 py-1 rounded-md font-bold">저장</button>
