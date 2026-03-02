@@ -128,6 +128,7 @@ export default function App() {
     const [showAmountDropdown, setShowAmountDropdown] = useState(false);
     const [showWeightDropdown, setShowWeightDropdown] = useState(false);
     const [fontFamily, setFontFamily] = useState('Gmarket');
+    const [settingsSubView, setSettingsSubView] = useState('bizDays');
 
     const [masterData, setMasterData] = useState(() => generateFullDataset());
     const [lastUpdated, setLastUpdated] = useState(() => {
@@ -230,6 +231,32 @@ export default function App() {
                     <div className="space-y-2">
                         <SidebarIcon active={view === 'dashboard'} icon={BarChart3} label="매출 실적" onClick={() => setView('dashboard')} />
                         <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={() => setView('settings')} />
+
+                        <AnimatePresence>
+                            {view === 'settings' && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="ml-8 mt-2 space-y-1 border-l-2 border-indigo-50 pl-4 overflow-hidden"
+                                >
+                                    {[
+                                        { id: 'bizDays', name: '영업일수' },
+                                        { id: 'org', name: '조직 및 인원' },
+                                        { id: 'types', name: '유형명' },
+                                        { id: 'data', name: '판매 데이터' }
+                                    ].map(sub => (
+                                        <button
+                                            key={sub.id}
+                                            onClick={() => setSettingsSubView(sub.id)}
+                                            className={`block w-full text-left py-2 text-sm font-black transition-all transform hover:translate-x-1 ${settingsSubView === sub.id ? 'text-indigo-600 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
+                                        >
+                                            {sub.name}
+                                        </button>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </nav>
 
@@ -294,7 +321,7 @@ export default function App() {
                 </header>
 
                 <main className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-4 bg-[#f8fafc] md:max-h-screen">
-                    {view === 'settings' ? <SettingsView setMasterData={setMasterData} masterData={masterData} setLastUpdated={setLastUpdated} fontFamily={fontFamily} setFontFamily={setFontFamily} fontMap={fontMap} selectedMonth={selectedMonth} /> : (
+                    {view === 'settings' ? <SettingsView setMasterData={setMasterData} masterData={masterData} setLastUpdated={setLastUpdated} fontFamily={fontFamily} setFontFamily={setFontFamily} fontMap={fontMap} selectedMonth={selectedMonth} subView={settingsSubView} /> : (
                         <div className="max-w-[1600px] mx-auto space-y-4">
                             <div className="flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4">
                                 <div className="flex flex-wrap items-center gap-3 bg-white/80 backdrop-blur-md p-2 px-4 rounded-2xl border border-slate-200/60 shadow-sm transition-all hover:shadow-md">

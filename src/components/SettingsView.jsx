@@ -1,55 +1,237 @@
-import { useState, useRef, useEffect } from 'react';
-import { Settings, Calendar as CalendarIcon, Users, Package, Building2, Filter, Upload, ChevronRight, Save, Target, Type, Globe, Info, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import {
+    Settings, Calendar as CalendarIcon, Users, Package, Building2,
+    Filter, Upload, ChevronRight, Save, Target, Type, Globe,
+    Info, CheckCircle2, AlertCircle, ChevronDown, CalendarDays,
+    ArrowRight
+} from 'lucide-react';
 import { SETTINGS } from '../data/mockEngine';
-import { calculateBusinessDays, calculateCurrentBusinessDay } from '../lib/dateUtils';
+import { calculateBusinessDays, calculateCurrentBusinessDay, getYearlyCalendarData } from '../lib/dateUtils';
+import { motion, AnimatePresence } from 'framer-motion';
 
-export function SettingsView({ setMasterData, setLastUpdated, selectedMonth }) {
+export function SettingsView({ setMasterData, setLastUpdated, selectedMonth, subView }) {
+    const [selectedYear, setSelectedYear] = useState('2026');
+
+    return (
+        <div className="animate-in fade-in slide-in-from-bottom-5 duration-700 space-y-8 pb-20">
+            <header className="mb-10 flex justify-between items-end">
+                <div>
+                    <h2 className="text-4xl font-black text-slate-800 tracking-tighter mb-2 italic uppercase">
+                        {subView === 'bizDays' ? 'Business Days' :
+                            subView === 'org' ? 'Organization' :
+                                subView === 'types' ? 'Type Definitions' : 'Sales Data Center'}
+                    </h2>
+                    <p className="text-slate-500 font-bold text-lg">
+                        {subView === 'bizDays' ? '영업일수 및 공휴일 상세 설정' :
+                            subView === 'org' ? '조직 및 인원 구성 관리' :
+                                subView === 'types' ? '시스템 유형 및 코드 관리' : '매출 및 목표 데이터 업로드'}
+                    </p>
+                </div>
+
+                {subView === 'bizDays' && (
+                    <div className="flex items-center gap-3 bg-white p-2 px-4 rounded-2xl border border-slate-200 shadow-sm">
+                        <CalendarDays size={20} className="text-indigo-500" />
+                        <select
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(e.target.value)}
+                            className="bg-transparent font-black text-slate-700 outline-none appearance-none pr-6 cursor-pointer"
+                        >
+                            <option value="2026">2026년</option>
+                            <option value="2025">2025년</option>
+                        </select>
+                        <ChevronDown size={14} className="-ml-6 text-slate-400 pointer-events-none" />
+                    </div>
+                )}
+            </header>
+
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={subView}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                >
+                    {subView === 'bizDays' && <BusinessDaysSubView year={selectedYear} />}
+                    {subView === 'org' && <OrganizationSubView />}
+                    {subView === 'types' && <TypesSubView />}
+                    {subView === 'data' && <DataUploadSubView setMasterData={setMasterData} setLastUpdated={setLastUpdated} />}
+                </motion.div>
+            </AnimatePresence>
+        </div>
+    );
+}
+
+/**
+ * 1. 영업일수 상세 설정 (달력형)
+ */
+function BusinessDaysSubView({ year }) {
+    const calendarData = useMemo(() => getYearlyCalendarData(year), [year]);
+
+    return (
+        <div className="space-y-12">
+            {calendarData.map(({ month, days }) => {
+                const totalBizDays = days.filter(d => d.isBusinessDay).length;
+                const holidays = days.filter(d => d.isHoliday || (d.isWeekend && d.holidayName));
+
+                return (
+                    <div key={month} className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all group">
+                        <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl font-black text-indigo-600 shadow-sm">
+                                    {month}
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-800">{year}년 {month}월</h3>
+                                    <p className="text-sm text-slate-400 font-bold uppercase tracking-wider">Monthly Calendar</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <span className="block text-[10px] text-slate-400 font-black uppercase tracking-tighter">Total Business Days</span>
+                                <span className="text-3xl font-black text-indigo-600">{totalBizDays} <span className="text-lg text-slate-300">Days</span></span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3">
+                            {/* 달력 영역 */}
+                            <div className="lg:col-span-2 p-8 border-r border-slate-100">
+                                <div className="grid grid-cols-7 gap-2">
+                                    {['일', '월', '화', '수', '목', '금', '토'].map(d => (
+                                        <div key={d} className={`text-center py-2 text-xs font-black uppercase tracking-widest ${d === '일' ? 'text-rose-500' : d === '토' ? 'text-blue-500' : 'text-slate-400'}`}>
+                                            {d}
+                                        </div>
+                                    ))}
+                                    {/* 첫 날 시작 요일 맞추기 */}
+                                    {Array.from({ length: new Date(year, month - 1, 1).getDay() }).map((_, i) => (
+                                        <div key={`empty-${i}`} />
+                                    ))}
+                                    {days.map(d => (
+                                        <div
+                                            key={d.date}
+                                            className={`
+                                                relative h-16 rounded-xl flex flex-col items-center justify-center border transition-all
+                                                ${d.isBusinessDay ? 'bg-white border-transparent hover:border-indigo-200 hover:bg-indigo-50/30' :
+                                                    d.isHoliday ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                                                        'bg-slate-50 border-slate-100 text-slate-400'}
+                                            `}
+                                        >
+                                            <span className="text-sm font-black">{d.day}</span>
+                                            {d.holidayName && <span className="text-[8px] font-bold mt-1 text-center truncate px-1">{d.holidayName}</span>}
+                                            {d.isBusinessDay && <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 상세 정보 (제외 사유) */}
+                            <div className="p-8 bg-slate-50/30">
+                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                    <Info size={14} className="text-indigo-400" />
+                                    영업일 제외 상세 내역
+                                </h4>
+                                <div className="space-y-3">
+                                    {holidays.length > 0 ? holidays.map(h => (
+                                        <div key={h.date} className="flex items-center justify-between p-3 bg-white rounded-2xl border border-slate-100 shadow-sm animate-in slide-in-from-right-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black ${h.isHoliday ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-400'}`}>
+                                                    {h.day}
+                                                </div>
+                                                <span className="text-xs font-black text-slate-700">{h.holidayName}</span>
+                                            </div>
+                                            <span className="text-[10px] text-slate-300 font-bold">{h.date}</span>
+                                        </div>
+                                    )) : (
+                                        <div className="text-center py-10">
+                                            <p className="text-xs text-slate-400 font-bold italic">제외된 날짜가 없습니다.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+/**
+ * 2. 조직 및 인원 설정
+ */
+function OrganizationSubView() {
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <SettingCard title="영업팀 관리" icon={Users} desc="활성 영업팀 및 조직 체계 구성">
+                <div className="space-y-3">
+                    {['FD팀', 'FC팀', 'FR팀', 'FS팀', 'FL팀'].map(team => (
+                        <div key={team} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500 font-black">
+                                    {team[0]}
+                                </div>
+                                <span className="text-sm text-slate-800 font-black">{team}</span>
+                            </div>
+                            <div className="w-10 h-5 bg-emerald-500 rounded-full relative">
+                                <div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full shadow-sm" />
+                            </div>
+                        </div>
+                    ))}
+                    <button className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-black hover:bg-slate-50 transition-all mt-4">
+                        + 새로운 팀 추가
+                    </button>
+                </div>
+            </SettingCard>
+
+            <SettingCard title="영업사원 마스터" icon={Building2} desc="팀별 전담 사원 및 권한 관리">
+                <div className="p-8 text-center bg-slate-50 border border-slate-200 border-dashed rounded-[32px]">
+                    <p className="text-slate-400 font-bold">전체 영업사원 48명 리스트 관리</p>
+                    <button className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black">상세 데이터 보기</button>
+                </div>
+            </SettingCard>
+        </div>
+    );
+}
+
+/**
+ * 3. 유형명 설정
+ */
+function TypesSubView() {
+    return (
+        <div className="bg-white rounded-[32px] border border-slate-200 p-8">
+            <div className="flex items-center gap-4 mb-8">
+                <div className="p-4 bg-amber-50 rounded-2xl text-amber-500">
+                    <Type size={24} />
+                </div>
+                <div>
+                    <h3 className="text-xl font-black text-slate-800">카테고리 및 유형 정의</h3>
+                    <p className="text-sm text-slate-400 font-bold">제품 분류 및 실적 집계 기준 코드 관리</p>
+                </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {['대분류', '중분류', '소분류'].map(level => (
+                    <div key={level} className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                        <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{level}</span>
+                        <div className="mt-4 space-y-2">
+                            {Array.from({ length: 3 }).map((_, i) => (
+                                <div key={i} className="px-4 py-2 bg-white rounded-lg text-xs font-bold text-slate-600 border border-slate-200 flex justify-between">
+                                    <span>분류 항목 {i + 1}</span>
+                                    <ArrowRight size={12} className="text-slate-300" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * 4. 데이터 업로드 센터 (원본 스타일 유지하되 정제)
+ */
+function DataUploadSubView({ setMasterData, setLastUpdated }) {
     const salesInputRef = useRef(null);
     const targetInputRef = useRef(null);
-    const [bizDays, setBizDays] = useState(SETTINGS.businessDays[selectedMonth] || 20);
-    const [currentDay, setCurrentDay] = useState(SETTINGS.currentBusinessDay);
-    const [autoCalc, setAutoCalc] = useState(true);
-
-    // 공휴일 정보 (사용자에게 보여주기 위함)
-    const holidays2026 = [
-        { date: '2026-01-01', name: '신정' },
-        { date: '2026-02-16', name: '설날 연휴' },
-        { date: '2026-02-17', name: '설날 당일' },
-        { date: '2026-02-18', name: '설날 연휴' },
-        { date: '2026-03-01', name: '삼일절' },
-        { date: '2026-03-02', name: '삼일절 대체공휴일' },
-        { date: '2026-05-05', name: '어린이날' },
-        { date: '2026-05-24', name: '부처님 오신 날' },
-        { date: '2026-05-25', name: '부처님 오신 날 대체공휴일' },
-        { date: '2026-06-06', name: '현충일' },
-        { date: '2026-08-15', name: '광복절' },
-        { date: '2026-08-17', name: '광복절 대체공휴일' },
-        { date: '2026-09-24', name: '추석 연휴' },
-        { date: '2026-09-25', name: '추석 당일' },
-        { date: '2026-09-26', name: '추석 연휴' },
-        { date: '2026-09-28', name: '추석 대체공휴일' },
-        { date: '2026-10-03', name: '개천절' },
-        { date: '2026-10-05', name: '개천절 대체공휴일' },
-        { date: '2026-10-09', name: '한글날' },
-        { date: '2026-12-25', name: '성탄절' },
-    ];
-
-    useEffect(() => {
-        if (autoCalc) {
-            const calculated = calculateBusinessDays(selectedMonth);
-            const current = calculateCurrentBusinessDay(selectedMonth);
-            setBizDays(calculated);
-            setCurrentDay(current);
-        }
-    }, [selectedMonth, autoCalc]);
-
-    const handleSave = () => {
-        SETTINGS.businessDays[selectedMonth] = bizDays;
-        SETTINGS.currentBusinessDay = currentDay;
-        alert('설정이 저장되었습니다. 대시보드에 반영됩니다.');
-        // 강제로 리렌더링을 유도하기 위해 마스터 데이터를 동일하게 설정 (App.jsx의 useMemo가 반응함)
-        setMasterData(prev => ({ ...prev }));
-    };
 
     const handleFileUpload = (e, type) => {
         const file = e.target.files[0];
@@ -66,210 +248,57 @@ export function SettingsView({ setMasterData, setLastUpdated, selectedMonth }) {
 
                 setMasterData(prev => {
                     const newData = { ...prev };
-                    if (type === 'sales') {
-                        newData.actual = data;
-                    } else {
-                        newData.target = data;
-                    }
+                    if (type === 'sales') newData.actual = data;
+                    else newData.target = data;
                     return newData;
                 });
 
                 if (setLastUpdated) {
                     const now = new Date();
-                    const yyyy = now.getFullYear();
-                    const mm = String(now.getMonth() + 1).padStart(2, '0');
-                    const dd = String(now.getDate()).padStart(2, '0');
-                    const hh = String(now.getHours()).padStart(2, '0');
-                    const min = String(now.getMinutes()).padStart(2, '0');
-                    setLastUpdated(`${yyyy}-${mm}-${dd} ${hh}:${min}`);
+                    setLastUpdated(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
                 }
-
-                alert(`${type === 'sales' ? '매출실적' : '목표'} 파일 업로드 성공! (${data.length}건 읽음) \n데이터가 대시보드 화면에 즉시 적용되었습니다.`);
+                alert(`${type === 'sales' ? '매출실적' : '목표'} 업로드 성공!`);
             } catch (error) {
-                alert('파일을 읽는 중 오류가 발생했습니다. 올바른 엑셀 형식인지 확인해주세요.');
+                alert('파일 오류가 발생했습니다.');
             }
         };
         reader.readAsBinaryString(file);
         e.target.value = '';
     };
+
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-5 duration-700 space-y-8 pb-20">
-            <header className="mb-10">
-                <h2 className="text-3xl font-black text-slate-800 tracking-tighter mb-2 italic">Dashboard Configuration</h2>
-                <p className="text-slate-500 font-medium text-lg">대시보드 환경설정 및 관리</p>
-            </header>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <SettingCard
-                    title="영업일수 설정"
-                    icon={CalendarIcon}
-                    desc="주말 및 국가 공휴일 자동 계산 시스템"
-                >
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100">
-                            <div>
-                                <span className="block text-slate-800 font-extrabold text-lg">자동 영업일 계산 (2026년 기준)</span>
-                                <span className="text-xs text-indigo-500 font-bold">주말 및 법정 공휴일이 자동으로 제외됩니다.</span>
-                            </div>
-                            <button
-                                onClick={() => setAutoCalc(!autoCalc)}
-                                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${autoCalc ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-500'}`}
-                            >
-                                {autoCalc ? '자동 활성화' : '수동 입력'}
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                <span className="block text-xs text-slate-400 font-bold mb-1 italic">대상 월 총 영업일</span>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        value={bizDays}
-                                        readOnly={autoCalc}
-                                        onChange={(e) => setBizDays(Number(e.target.value))}
-                                        className={`w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-slate-800 font-black text-xl ${autoCalc ? 'bg-slate-50 cursor-not-allowed' : ''}`}
-                                    />
-                                    <span className="text-slate-400 font-bold">일</span>
-                                </div>
-                            </div>
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                <span className="block text-xs text-slate-400 font-bold mb-1 italic">현재 경과 영업일</span>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        value={currentDay}
-                                        readOnly={autoCalc}
-                                        onChange={(e) => setCurrentDay(Number(e.target.value))}
-                                        className={`w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-slate-800 font-black text-xl ${autoCalc ? 'bg-slate-50 cursor-not-allowed' : ''}`}
-                                    />
-                                    <span className="text-slate-400 font-bold">일</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="pt-2">
-                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                <Info size={14} className="text-indigo-400" />
-                                이번 달 제외된 공휴일
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                                {holidays2026.filter(h => h.date.startsWith(selectedMonth)).map(h => (
-                                    <div key={h.date} className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-100 text-rose-600 rounded-lg text-[11px] font-bold animate-in zoom-in">
-                                        <div className="w-1 h-1 rounded-full bg-rose-400" />
-                                        <span>{h.name} ({h.date.split('-').slice(1).join('/')})</span>
-                                    </div>
-                                ))}
-                                {holidays2026.filter(h => h.date.startsWith(selectedMonth)).length === 0 && (
-                                    <span className="text-[11px] text-slate-400 font-bold italic">이번 달은 공휴일이 없습니다. (주말만 제외됨)</span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </SettingCard>
-
-                {/* 2. 조직/영업사원 설정 */}
-                <SettingCard
-                    title="조직 및 인원 설정"
-                    icon={Users}
-                    desc="대시보드 표시 팀 및 비영업 조직 관리"
-                >
-                    <div className="space-y-3">
-                        {['FD팀', 'FC팀', 'FR팀', 'FS팀', 'FL팀'].map(team => (
-                            <div key={team} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                                    <span className="text-sm text-slate-600 font-medium">{team}</span>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <span className="text-xs text-slate-400">활성 상태</span>
-                                    <div className="w-8 h-4 bg-emerald-100 rounded-full relative">
-                                        <div className="absolute right-1 top-1 w-2 h-2 bg-emerald-500 rounded-full" />
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </SettingCard>
-
-                {/* 3. 데이터 업로드 관리 */}
-                <SettingCard
-                    title="데이터 업로드 마스터"
-                    icon={Upload}
-                    desc="매출 실적 및 목표 데이터를 엑셀/CSV로 통합 관리"
-                >
-                    <div className="space-y-6">
-                        <div className="p-4 bg-indigo-50/30 border border-indigo-100 rounded-2xl">
-                            <div className="flex items-start gap-4">
-                                <div className="p-2 bg-white rounded-lg border border-indigo-100 text-indigo-500">
-                                    <Info size={16} />
-                                </div>
-                                <div>
-                                    <p className="text-[11px] text-slate-600 font-bold leading-relaxed">
-                                        기존 수기 입력을 대체하여 대량의 데이터를 한 번에 반영할 수 있습니다.<br />
-                                        업로드된 데이터는 대시보드의 모든 차트와 요약에 즉각 반영됩니다.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-3">
-                            <input type="file" ref={salesInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={(e) => handleFileUpload(e, 'sales')} />
-                            <input type="file" ref={targetInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={(e) => handleFileUpload(e, 'target')} />
-
-                            <button onClick={() => salesInputRef.current.click()} className="flex items-center justify-between p-6 bg-white border-2 border-slate-100 rounded-3xl hover:border-indigo-500 hover:bg-slate-50 transition-all group active:scale-[0.98] shadow-sm hover:shadow-md">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-4 bg-slate-50 rounded-2xl group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
-                                        <Filter size={24} />
-                                    </div>
-                                    <div className="text-left">
-                                        <span className="block text-sm font-black text-slate-800">매출 실적 업로드</span>
-                                        <span className="text-[10px] text-slate-400 font-bold">일별 실적 데이터 (CSV/Excel)</span>
-                                    </div>
-                                </div>
-                                <ChevronRight className="text-slate-300 group-hover:text-indigo-500" />
-                            </button>
-
-                            <button onClick={() => targetInputRef.current.click()} className="flex items-center justify-between p-6 bg-white border-2 border-slate-100 rounded-3xl hover:border-emerald-500 hover:bg-slate-50 transition-all group active:scale-[0.98] shadow-sm hover:shadow-md">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-4 bg-slate-50 rounded-2xl group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
-                                        <Target size={24} />
-                                    </div>
-                                    <div className="text-left">
-                                        <span className="block text-sm font-black text-slate-800">연간/월간 목표 업로드</span>
-                                        <span className="text-[10px] text-slate-400 font-bold">팀별/기간별 설정 데이터 (CSV/Excel)</span>
-                                    </div>
-                                </div>
-                                <ChevronRight className="text-slate-300 group-hover:text-emerald-500" />
-                            </button>
-                        </div>
-                    </div>
-                </SettingCard>
-            </div>
-
-            <div className="flex justify-end pt-10">
-                <button
-                    onClick={handleSave}
-                    className="flex items-center gap-2 px-10 py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-600/20 transform active:scale-95 transition-all text-lg group"
-                >
-                    <CheckCircle2 size={24} className="group-hover:rotate-12 transition-transform" />
-                    설정 값 저장 및 대시보드 갱신
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <SettingCard title="매출 실적 파일" icon={Filter} desc="ERP 시스템에서 추출된 마스타 데이터 업로드">
+                <input type="file" ref={salesInputRef} className="hidden" onChange={(e) => handleFileUpload(e, 'sales')} />
+                <button onClick={() => salesInputRef.current.click()} className="w-full py-16 border-2 border-dashed border-indigo-200 rounded-[32px] flex flex-col items-center justify-center hover:bg-indigo-50 transition-all group">
+                    <Filter className="text-indigo-500 mb-4 group-hover:scale-110 transition-transform" size={40} />
+                    <span className="text-lg font-black text-slate-800">엑셀/CSV 파일 선택</span>
+                    <span className="text-xs text-slate-400 font-bold mt-2">Duri Sales Master Format (.xlsx)</span>
                 </button>
-            </div>
+            </SettingCard>
+
+            <SettingCard title="목표 데이터 파일" icon={Target} desc="연간 및 월간 목표 수립 데이터 업로드">
+                <input type="file" ref={targetInputRef} className="hidden" onChange={(e) => handleFileUpload(e, 'target')} />
+                <button onClick={() => targetInputRef.current.click()} className="w-full py-16 border-2 border-dashed border-emerald-200 rounded-[32px] flex flex-col items-center justify-center hover:bg-emerald-50 transition-all group">
+                    <Target className="text-emerald-500 mb-4 group-hover:scale-110 transition-transform" size={40} />
+                    <span className="text-lg font-black text-slate-800">목표 파일 업로드</span>
+                    <span className="text-xs text-slate-400 font-bold mt-2">Duri Target Schema (.csv)</span>
+                </button>
+            </SettingCard>
         </div>
     );
 }
 
 function SettingCard({ title, icon: Icon, desc, children }) {
     return (
-        <div className="bg-white border border-slate-200 rounded-[32px] p-8 shadow-sm hover:shadow-md transition-all">
-            <div className="flex items-start gap-4 mb-6">
-                <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600">
+        <div className="bg-white border border-slate-200 rounded-[40px] p-8 shadow-sm hover:shadow-md transition-all">
+            <div className="flex items-start gap-5 mb-8">
+                <div className="p-4 bg-slate-50 rounded-2xl text-slate-900 border border-slate-100 shadow-sm">
                     <Icon size={24} />
                 </div>
                 <div>
-                    <h3 className="text-lg font-bold text-slate-800">{title}</h3>
-                    <p className="text-xs text-slate-500 mt-1">{desc}</p>
+                    <h3 className="text-xl font-black text-slate-800">{title}</h3>
+                    <p className="text-sm font-bold text-slate-400 mt-1">{desc}</p>
                 </div>
             </div>
             {children}
