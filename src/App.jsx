@@ -250,10 +250,7 @@ export default function App() {
                 <header className="py-2 px-4 md:py-3 md:px-8 border-b border-slate-200 bg-white">
                     <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 md:gap-6 mb-2 md:mb-4">
                         <div className="flex-1 min-w-0 w-full">
-                            <div className="flex items-center gap-2 mb-2 md:mb-4">
-                                <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
-                                <span className="text-indigo-600 text-[10px] md:text-xs font-black uppercase tracking-widest">Sales Data Performance</span>
-                            </div>
+                            <div className="hidden"></div>
                             <h1 className="text-2xl md:text-5xl font-black text-slate-900 tracking-tighter italic mb-2 md:mb-3 leading-tight">
                                 {formatDisplayMonth(selectedMonth)} <span className={mainTab === 'expected' ? 'text-indigo-600' : 'text-emerald-500'}>
                                     {mainTab === 'expected' ? '예상마감 실적' : '현재 매출 실적'}
@@ -364,7 +361,7 @@ export default function App() {
                                             <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center whitespace-nowrap overflow-x-auto no-scrollbar">
                                                 <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                                                     <Activity size={16} className="text-indigo-500" />
-                                                    Team Analysis Breakdown
+                                                    팀별 분석 현황
                                                 </h3>
                                                 <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 ml-4 shrink-0">
                                                     <button onClick={() => setMetricType('amount')} className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
@@ -432,7 +429,7 @@ export default function App() {
                                             <div className="p-6 border-b border-slate-100 bg-slate-50/50">
                                                 <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                                                     <TrendingUp size={16} className="text-indigo-600" />
-                                                    Achievement Visualization
+                                                    달성률 시각화
                                                 </h3>
                                             </div>
                                             <div className="p-4 flex-1 min-h-[340px]">
@@ -464,7 +461,7 @@ export default function App() {
                                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                                             <h3 className="text-xs font-black text-slate-800 italic uppercase tracking-wider flex items-center gap-2">
                                                 <PieChartIcon size={16} className="text-indigo-600" />
-                                                Market Share
+                                                시장 점유율
                                             </h3>
                                             <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
                                                 <button onClick={() => setMetricType('amount')} className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
@@ -497,11 +494,11 @@ export default function App() {
                                     <div className="bg-white border border-slate-200 rounded-[24px] p-6 text-slate-800 relative overflow-hidden group shadow-sm hover:shadow-md transition-all">
                                         <div className="absolute -top-6 -right-6 w-24 h-24 bg-indigo-50 rounded-full blur-2xl group-hover:scale-150 transition-transform" />
                                         <Globe size={40} className="absolute bottom-2 right-2 text-indigo-100" />
-                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Company Annual Goal</h4>
-                                        <p className="text-2xl font-black tracking-tighter text-slate-900 mb-4">Target 2026</p>
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">회사 연간 목표</h4>
+                                        <p className="text-2xl font-black tracking-tighter text-slate-900 mb-4">2026년 목표</p>
                                         <div className="space-y-2">
                                             <div className="flex justify-between text-[10px] font-bold">
-                                                <span className="text-slate-500">Yearly Progress</span>
+                                                <span className="text-slate-500">연간 진척도</span>
                                                 <span className="text-indigo-600">31.4%</span>
                                             </div>
                                             <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
