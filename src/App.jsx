@@ -353,211 +353,103 @@ export default function App() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-                                {analysisMode === 'goal' && (
-                                    <>
-                                        <CompactStat title="목표 금액" value={fCurrency(summary.target)} icon={Target} color="slate" />
-                                        <CompactStat title={mainTab === 'expected' ? "마감 예상 실적" : "당월 현재 실적"} value={fCurrency(summary.actual)} icon={DollarSign} color="indigo" />
-                                        <CompactStat title={mainTab === 'expected' ? "예상 달성률" : "현재 달성률"} value={fPercent(summary.achievementRate)} icon={Zap} color="emerald" trend={summary.achievementRate} />
-                                        <CompactStat title="진도 대비 격차" value={fPercent(summary.progressGap)} detail={`진도율(${fPercent(summary.progressRate)})`} icon={TrendingUp} color={summary.progressGap >= 0 ? 'emerald' : 'rose'} trend={summary.progressGap} />
-                                    </>
-                                )}
-                                {analysisMode === 'yoy' && (
-                                    <>
-                                        <CompactStat title="전년 동기 실적" value={fCurrency(summary.lastYearActual)} icon={Calendar} color="slate" />
-                                        <CompactStat title={mainTab === 'expected' ? "마감 예상 실적" : "당월 현재 실적"} value={fCurrency(summary.actual)} icon={DollarSign} color="indigo" />
-                                        <CompactStat title={mainTab === 'expected' ? "예상 성장률 (YoY)" : "전년 대비 성장률"} value={fPercent(summary.yoyGrowth)} icon={TrendingUp} color="amber" trend={summary.yoyGrowth} />
-                                        <CompactStat title="성장액" value={fCurrency(summary.actual - summary.lastYearActual)} detail={mainTab === 'expected' ? "예상 vs 전년" : "현재 vs 전년"} icon={Scale} color={summary.yoyGrowth >= 0 ? 'emerald' : 'rose'} />
-                                    </>
-                                )}
-                                {analysisMode === 'mom' && (
-                                    <>
-                                        <CompactStat title="전월 실적 (최종)" value={fCurrency(summary.lastMonthActual)} icon={Calendar} color="slate" />
-                                        <CompactStat title={mainTab === 'expected' ? "마감 예상 실적" : "당월 현재 실적"} value={fCurrency(summary.actual)} icon={DollarSign} color="indigo" />
-                                        <CompactStat title={mainTab === 'expected' ? "예상 성장률 (MoM)" : "전월 대비 성장률"} value={fPercent(summary.momGrowth)} icon={TrendingUp} color="blue" trend={summary.momGrowth} />
-                                        <CompactStat title="성장액" value={fCurrency(summary.actual - summary.lastMonthActual)} detail={mainTab === 'expected' ? "예상 vs 전월" : "현재 vs 전월"} icon={Scale} color={summary.momGrowth >= 0 ? 'emerald' : 'rose'} />
-                                    </>
-                                )}
-                                {analysisMode === 'cumulative' && (
-                                    <>
-                                        <CompactStat title="전년 동월 누계 (YTD)" value={fCurrency(summary.cumulativeActual * 0.85)} icon={Clock} color="slate" />
-                                        <CompactStat title={mainTab === 'expected' ? "연간 예상 실적" : "당해 누계 실적"} value={fCurrency(summary.cumulativeActual)} icon={DollarSign} color="indigo" />
-                                        <CompactStat title="누계 성장률" value="+15.4%" detail="26년 YTD vs 25년 YTD" icon={TrendingUp} color="emerald" trend={15.4} />
-                                        <CompactStat title={mainTab === 'expected' ? "연간 예상 달성률" : "누계 달성률"} value={fPercent(summary.cumulativeAchievement)} icon={Zap} color="violet" trend={summary.cumulativeAchievement} />
-                                    </>
-                                )}
-                            </div>
+                            <div className="hidden"></div>
 
                             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                                <div className="xl:col-span-3 space-y-6">
-                                    <div className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm">
-                                        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
-                                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                                                <TrendingUp size={16} className="text-indigo-600" />
-                                                {analysisMode === 'goal' ? '목표 대비 달성률 집계' :
-                                                    analysisMode === 'yoy' ? '전년 대비 성장률 집계' :
-                                                        analysisMode === 'mom' ? '전월 대비 성장률 집계' : '누계 실적 집계'}
-                                            </h3>
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                                                    <button onClick={() => setMetricType('amount')} className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
-                                                    <button onClick={() => setMetricType('weight')} className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>중량</button>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="relative">
-                                                        <button onClick={(e) => { e.stopPropagation(); setMetricType('amount'); setShowAmountDropdown(!showAmountDropdown); setShowWeightDropdown(false); }} className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${metricType === 'amount' ? 'border-indigo-200 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}>
-                                                            {CURRENCY_UNITS.find(u => u.key === amountUnit)?.label}
-                                                        </button>
-                                                        {showAmountDropdown && (
-                                                            <div className="absolute top-full mt-2 right-0 w-24 bg-white border border-slate-200 rounded-xl shadow-xl z-[100] py-1">
-                                                                {CURRENCY_UNITS.map(unit => (
-                                                                    <button key={unit.key} onClick={(e) => { e.stopPropagation(); setAmountUnit(unit.key); setMetricType('amount'); setShowAmountDropdown(false); }} className={`w-full text-left px-3 py-1.5 text-[10px] font-bold ${amountUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}>{unit.label}</button>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="relative">
-                                                        <button onClick={(e) => { e.stopPropagation(); setMetricType('weight'); setShowWeightDropdown(!showWeightDropdown); setShowAmountDropdown(false); }} className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${metricType === 'weight' ? 'border-indigo-200 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}>
-                                                            {WEIGHT_UNITS.find(u => u.key === weightUnit)?.label}
-                                                        </button>
-                                                        {showWeightDropdown && (
-                                                            <div className="absolute top-full mt-2 right-0 w-24 bg-white border border-slate-200 rounded-xl shadow-xl z-[100] py-1">
-                                                                {WEIGHT_UNITS.map(unit => (
-                                                                    <button key={unit.key} onClick={(e) => { e.stopPropagation(); setWeightUnit(unit.key); setMetricType('weight'); setShowWeightDropdown(false); }} className={`w-full text-left px-3 py-1.5 text-[10px] font-bold ${weightUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}>{unit.label}</button>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                <div className="xl:col-span-3">
+                                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                                        {/* Detailed Team Analysis Table (LEFT - 3/5) */}
+                                        <div className="lg:col-span-3 bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm flex flex-col">
+                                            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center whitespace-nowrap overflow-x-auto no-scrollbar">
+                                                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                    <Activity size={14} className="text-indigo-500" />
+                                                    Team Analysis Breakdown
+                                                </h3>
+                                                <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200 ml-4 shrink-0">
+                                                    <button onClick={() => setMetricType('amount')} className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
+                                                    <button onClick={() => setMetricType('weight')} className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>중량</button>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div className="p-6 h-[340px]">
-                                            <ResponsiveContainer>
-                                                <BarChart data={drillDownData} onClick={(data) => data && handleDrillDown(data.activePayload[0].payload)}>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                                                    <XAxis dataKey="name" stroke="#64748b" fontSize={10} fontWeight={800} tickLine={false} axisLine={false} dy={10} />
-                                                    <YAxis stroke="#64748b" fontSize={9} tickLine={false} axisLine={false} unit="%" />
-                                                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '11px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                                                    <Bar dataKey={analysisMode === 'goal' ? 'achievement' :
-                                                        analysisMode === 'yoy' ? 'yoy' :
-                                                            analysisMode === 'mom' ? 'mom' : 'achievement'}
-                                                        name={analysisMode === 'goal' ? '달성률' : '성장률'}
-                                                        radius={[8, 8, 0, 0]} barSize={40} cursor="pointer">
-                                                        {drillDownData.map((e, i) => (
-                                                            <Cell key={i} fill={TEAM_COLORS[e.name]?.main || TEAM_COLORS['전체'].main} opacity={0.8} />
+                                            <div className="overflow-x-auto custom-scrollbar flex-1 min-h-[400px]">
+                                                <table className="w-full text-left text-[11px] table-fixed min-w-[500px]">
+                                                    <thead className="sticky top-0 z-10">
+                                                        <tr className="text-slate-500 font-bold border-b border-slate-100 bg-slate-50 text-[10px]">
+                                                            <th className="py-3 px-6 w-32">구분</th>
+                                                            <th className="py-3 text-right">실적</th>
+                                                            <th className="py-3 text-right">목표</th>
+                                                            <th className="py-3 text-center w-24">달성%</th>
+                                                            <th className="py-3 pr-6 text-right w-28">과부족</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {drillDownData.map((item, i) => (
+                                                            <tr key={i} onClick={() => handleDrillDown(item)} className="hover:bg-slate-50 transition-colors cursor-pointer group">
+                                                                <td className="py-4 px-6 font-black text-slate-800 group-hover:text-indigo-600 transition-colors uppercase tracking-tight truncate">
+                                                                    <span className="inline-block w-1.5 h-4 rounded-full mr-3" style={{ background: TEAM_COLORS[item.name]?.main || '#e2e8f0' }} />
+                                                                    {item.name}
+                                                                </td>
+                                                                <td className="py-4 font-mono text-slate-700 text-right">{fCurrency(item.actual)}</td>
+                                                                <td className="py-4 font-mono text-slate-400 text-right">{fCurrency(item.target)}</td>
+                                                                <td className="py-4 text-center">
+                                                                    <div className="flex flex-col items-center">
+                                                                        <span className="font-bold text-slate-900">{fPercent(item.achievement)}</span>
+                                                                        <div className="w-12 h-1 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                                                                            <div className="h-full bg-indigo-500" style={{ width: `${Math.min(item.achievement, 100)}%` }}></div>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className={`py-4 pr-6 font-mono text-right font-black ${item.overShort >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                    {item.overShort > 0 ? `+${fCurrency(item.overShort)}` : fCurrency(item.overShort)}
+                                                                </td>
+                                                            </tr>
                                                         ))}
-                                                        <LabelList
-                                                            dataKey={analysisMode === 'goal' ? 'progressGap' :
-                                                                analysisMode === 'yoy' ? 'yoy' :
-                                                                    analysisMode === 'mom' ? 'mom' : 'achievement'}
-                                                            position="top"
-                                                            content={props => <CustomLabel {...props} mainTab={mainTab} analysisMode={analysisMode} />}
-                                                        />
-                                                    </Bar>
-                                                </BarChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm">
-                                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                            <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Detail Breakdown</h3>
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                                                    <button onClick={() => setMetricType('amount')} className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
-                                                    <button onClick={() => setMetricType('weight')} className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>중량</button>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="relative">
-                                                        <button onClick={(e) => { e.stopPropagation(); setMetricType('amount'); setShowAmountDropdown(!showAmountDropdown); setShowWeightDropdown(false); }} className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${metricType === 'amount' ? 'border-indigo-200 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}>
-                                                            {CURRENCY_UNITS.find(u => u.key === amountUnit)?.label}
-                                                        </button>
-                                                        {showAmountDropdown && (
-                                                            <div className="absolute top-full mt-2 right-0 w-24 bg-white border border-slate-200 rounded-xl shadow-xl z-[100] py-1">
-                                                                {CURRENCY_UNITS.map(unit => (
-                                                                    <button key={unit.key} onClick={(e) => { e.stopPropagation(); setAmountUnit(unit.key); setMetricType('amount'); setShowAmountDropdown(false); }} className={`w-full text-left px-3 py-1.5 text-[10px] font-bold ${amountUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}>{unit.label}</button>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="relative">
-                                                        <button onClick={(e) => { e.stopPropagation(); setMetricType('weight'); setShowWeightDropdown(!showWeightDropdown); setShowAmountDropdown(false); }} className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${metricType === 'weight' ? 'border-indigo-200 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}>
-                                                            {WEIGHT_UNITS.find(u => u.key === weightUnit)?.label}
-                                                        </button>
-                                                        {showWeightDropdown && (
-                                                            <div className="absolute top-full mt-2 right-0 w-24 bg-white border border-slate-200 rounded-xl shadow-xl z-[100] py-1">
-                                                                {WEIGHT_UNITS.map(unit => (
-                                                                    <button key={unit.key} onClick={(e) => { e.stopPropagation(); setWeightUnit(unit.key); setMetricType('weight'); setShowWeightDropdown(false); }} className={`w-full text-left px-3 py-1.5 text-[10px] font-bold ${weightUnit === unit.key ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}>{unit.label}</button>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left text-[11px] table-fixed">
-                                                <thead>
-                                                    <tr className="text-slate-500 font-bold border-b border-slate-100 bg-slate-50/30 text-[10px]">
-                                                        <th className="py-3 px-6 w-1/4">구분</th>
-                                                        {analysisMode === 'goal' ? (
-                                                            <>
-                                                                <th className="py-3 text-right">{mainTab === 'expected' ? '예상실적' : '현재실적'}</th>
-                                                                <th className="py-3 text-right">목표</th>
-                                                                <th className="py-3 text-center w-24">{mainTab === 'expected' ? '예상달성률' : '달성률'}</th>
-                                                                <th className="py-3 pr-6 text-right">진도차이</th>
-                                                            </>
-                                                        ) : analysisMode === 'yoy' ? (
-                                                            <>
-                                                                <th className="py-3 text-right">{mainTab === 'expected' ? '예상실적' : '현재실적'}</th>
-                                                                <th className="py-3 text-right">전년실적</th>
-                                                                <th className="py-3 text-center w-24">성장률(YoY)</th>
-                                                                <th className="py-3 pr-6 text-right">성장액</th>
-                                                            </>
-                                                        ) : analysisMode === 'mom' ? (
-                                                            <>
-                                                                <th className="py-3 text-right">{mainTab === 'expected' ? '예상실적' : '현재실적'}</th>
-                                                                <th className="py-3 text-right">전월실적</th>
-                                                                <th className="py-3 text-center w-24">성장률(MoM)</th>
-                                                                <th className="py-3 pr-6 text-right">성장액</th>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <th className="py-3 text-right">{mainTab === 'expected' ? '연간예상' : '누계실적'}</th>
-                                                                <th className="py-3 text-right">누계목표</th>
-                                                                <th className="py-3 text-center w-24">누계달성률</th>
-                                                                <th className="py-3 pr-6 text-right">누계격차</th>
-                                                            </>
-                                                        )}
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-100">
-                                                    {drillDownData.map((item, i) => (
-                                                        <tr key={i} onClick={() => handleDrillDown(item)} className="hover:bg-slate-50 transition-colors cursor-pointer group">
-                                                            <td className="py-4 px-6 font-black text-slate-800 group-hover:text-indigo-600 transition-colors uppercase tracking-tight truncate">
-                                                                <span className="inline-block w-1.5 h-4 rounded-full mr-3" style={{ background: TEAM_COLORS[item.name]?.main || '#e2e8f0' }} />
-                                                                {item.name}
+                                                    </tbody>
+                                                    <tfoot className="bg-slate-50/80 border-t-2 border-slate-200">
+                                                        <tr className="font-black">
+                                                            <td className="py-4 px-6 text-slate-900 uppercase tracking-wider">합계</td>
+                                                            <td className="py-4 font-mono text-indigo-700 text-right text-[12px]">{fCurrency(summary.actual)}</td>
+                                                            <td className="py-4 font-mono text-slate-600 text-right text-[12px]">{fCurrency(summary.target)}</td>
+                                                            <td className="py-4 text-center">
+                                                                <div className="flex flex-col items-center">
+                                                                    <span className="text-indigo-600 text-[12px]">{fPercent(summary.achievementRate)}</span>
+                                                                    <div className="w-16 h-1.5 bg-slate-200 rounded-full mt-1 overflow-hidden">
+                                                                        <div className="h-full bg-indigo-600" style={{ width: `${Math.min(summary.achievementRate, 100)}%` }}></div>
+                                                                    </div>
+                                                                </div>
                                                             </td>
-                                                            <td className="py-4 font-mono text-slate-700 text-right">
-                                                                {fCurrency(analysisMode === 'cumulative' ? item.cumulativeActual : item.actual)}
-                                                            </td>
-                                                            <td className="py-4 font-mono text-slate-400 text-right">
-                                                                {fCurrency(analysisMode === 'yoy' ? item.lastYear : analysisMode === 'mom' ? item.lastMonth : analysisMode === 'cumulative' ? item.cumulativeTarget : item.target)}
-                                                            </td>
-                                                            <td className="py-4 px-4 text-center">
-                                                                <span className="font-bold text-slate-900">
-                                                                    {fPercent(analysisMode === 'yoy' ? item.yoy : analysisMode === 'mom' ? item.mom : analysisMode === 'cumulative' ? (item.cumulativeActual / (item.cumulativeTarget || 1) * 100) : item.achievement)}
-                                                                </span>
-                                                            </td>
-                                                            <td className={`py-4 pr-6 font-mono text-right font-black ${item.progressGap >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                                {analysisMode === 'goal' ? (item.progressGap > 0 ? `+${item.progressGap.toFixed(1)}%p` : `${item.progressGap.toFixed(1)}%p`) :
-                                                                    analysisMode === 'yoy' ? fCurrency(item.actual - item.lastYear) :
-                                                                        analysisMode === 'mom' ? fCurrency(item.actual - item.lastMonth) : fCurrency(item.cumulativeActual - item.cumulativeTarget)}
+                                                            <td className={`py-4 pr-6 font-mono text-right text-[12px] ${summary.overShort >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                                {summary.overShort > 0 ? `+${fCurrency(summary.overShort)}` : fCurrency(summary.overShort)}
                                                             </td>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                                    </tfoot>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        {/* Performance Horizontal Chart (RIGHT - 2/5) */}
+                                        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm flex flex-col">
+                                            <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                                    <TrendingUp size={16} className="text-indigo-600" />
+                                                    Achievement Visualization
+                                                </h3>
+                                            </div>
+                                            <div className="p-4 flex-1 min-h-[340px]">
+                                                <ResponsiveContainer>
+                                                    <BarChart data={drillDownData} layout="vertical" margin={{ left: -10, right: 40, top: 10, bottom: 10 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                                                        <XAxis type="number" domain={[0, dataMax => Math.round(dataMax + 20)]} hide />
+                                                        <YAxis dataKey="name" type="category" stroke="#64748b" fontSize={10} fontWeight={900} tickLine={false} axisLine={false} width={60} />
+                                                        <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', fontSize: '11px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                                                        <Bar dataKey="achievement" radius={[0, 10, 10, 0]} barSize={24}>
+                                                            {drillDownData.map((e, i) => (
+                                                                <Cell key={i} fill={TEAM_COLORS[e.name]?.main || TEAM_COLORS['전체'].main} opacity={0.8} />
+                                                            ))}
+                                                            <LabelList dataKey="achievement" position="right" formatter={(v) => `${v.toFixed(1)}%`} fontSize={10} fontWeight={900} fill="#475569" />
+                                                        </Bar>
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -608,7 +500,7 @@ export default function App() {
                                                 <span className="text-indigo-600">31.4%</span>
                                             </div>
                                             <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                                <div className="h-full bg-indigo-600 rounded-full shadow-lg shadow-indigo-600/30" style={{ width: '31.4%' }} />
+                                                <div className="h-full bg-indigo-600 rounded-full shadow-lg shadow-indigo-600/30" style={{ width: '31.4%' }}></div>
                                             </div>
                                         </div>
                                     </div>

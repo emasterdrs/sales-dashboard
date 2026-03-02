@@ -73,8 +73,10 @@ export class SalesBI {
         let cumulativeActual = mainTab === 'expected' ? (JanActualAmt + currentActual) : (JanActualAmt + (metricType === 'amount' ? actualAmt : actualWeight));
         let cumulativeTarget = JanTargetAmt + currentTarget;
 
-        const achievementRate = currentTarget > 0 ? (currentActual / currentTarget) * 100 : 0;
         const progressRate = (SETTINGS.currentBusinessDay / businessDays) * 100;
+        const achievementRate = currentTarget > 0 ? (currentActual / currentTarget) * 100 : 0;
+        const progressAdjustedTarget = currentTarget * (progressRate / 100);
+        const overShort = mainTab === 'expected' ? (currentActual - currentTarget) : (currentActual - progressAdjustedTarget);
 
         return {
             actual: currentActual,
@@ -82,6 +84,7 @@ export class SalesBI {
             achievementRate,
             progressRate,
             progressGap: achievementRate - (mainTab === 'expected' ? 100 : progressRate),
+            overShort,
             lastYearActual: currentLastYear,
             lastMonthActual: currentLastMonth,
             yoyGrowth: currentLastYear > 0 ? ((currentActual - currentLastYear) / currentLastYear) * 100 : 0,
@@ -97,45 +100,56 @@ export class SalesBI {
      * 드릴다운 데이터 집계
      */
     getDrillDown(selectedMonth, level, id, nextLevel, mainTab, metricType) {
+        const businessDays = SETTINGS.businessDays[selectedMonth] || 20;
+        const progressRate = (SETTINGS.currentBusinessDay / businessDays) * 100;
+
         if (nextLevel === 'team') {
-            return this.getAggregatedByTeam().map(d => this._mapMetric(d, metricType, mainTab));
+            return this.getAggregatedByTeam().map(d => this._mapMetric(d, metricType, mainTab, progressRate));
         } else if (nextLevel === 'person') {
-            return this.getAggregatedBySalesperson(id).map(d => this._mapMetric(d, metricType, mainTab));
+            return this.getAggregatedBySalesperson(id).map(d => this._mapMetric(d, metricType, mainTab, progressRate));
         } else if (nextLevel === 'customer') {
-            return this.getAggregatedByCustomer(id).map(d => this._mapMetric(d, metricType, mainTab));
+            return this.getAggregatedByCustomer(id).map(d => this._mapMetric(d, metricType, mainTab, progressRate));
         }
-        return this.getAggregatedByTeam().map(d => this._mapMetric(d, metricType, mainTab));
+        return this.getAggregatedByTeam().map(d => this._mapMetric(d, metricType, mainTab, progressRate));
     }
 
-    _mapMetric(d, metricType, mainTab) {
+    _mapMetric(d, metricType, mainTab, progressRate) {
         let actual = d.actual;
         let weight = d.weight;
+        let target = d.target;
 
         if (mainTab === 'expected') {
             actual = d.forecast;
             weight = d.forecastWeight;
         }
 
+        const overShort = mainTab === 'expected' ? (actual - target) : (actual - (target * (progressRate / 100)));
+
         if (metricType === 'amount') {
             return {
                 ...d,
-                actual: actual
+                actual: actual,
+                overShort
             };
         }
 
         // 중량 기준으로 필드 매핑
+        const weightTarget = d.target / 4500;
+        const weightOverShort = mainTab === 'expected' ? (weight - weightTarget) : (weight - (weightTarget * (progressRate / 100)));
+
         return {
             ...d,
             actual: weight,
-            target: d.target / 4500, // 시뮬레이션
+            target: weightTarget,
             lastYear: d.lastYearWeight,
             lastMonth: d.lastMonthWeight,
-            achievement: (weight / (d.target / 4500 || 1)) * 100,
+            achievement: (weight / (weightTarget || 1)) * 100,
             yoy: d.lastYearWeight > 0 ? ((weight - d.lastYearWeight) / d.lastYearWeight) * 100 : 0,
             mom: d.lastMonthWeight > 0 ? ((weight - d.lastMonthWeight) / d.lastMonthWeight) * 100 : 0,
-            cumulativeTarget: (d.target / 4500) * 2.0,
+            cumulativeTarget: weightTarget * 2.0,
             cumulativeActual: weight * 1.8,
-            forecastAmt: d.forecastWeight
+            forecastAmt: d.forecastWeight,
+            overShort: weightOverShort
         };
     }
 
