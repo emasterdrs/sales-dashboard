@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/sales-dashboard/',
+  base: process.env.VERCEL ? '/' : '/sales-dashboard/',
   build: {
     minify: false,
     cssMinify: false
