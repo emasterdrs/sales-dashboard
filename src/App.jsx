@@ -255,7 +255,7 @@ export default function App() {
                             </div>
                             <h1 className="text-2xl md:text-5xl font-black text-slate-900 tracking-tighter italic mb-2 md:mb-3 leading-tight">
                                 {formatDisplayMonth(selectedMonth)} <span className={mainTab === 'expected' ? 'text-indigo-600' : 'text-emerald-500'}>
-                                    {mainTab === 'expected' ? '예상마감 실적' : '매출 실적'}
+                                    {mainTab === 'expected' ? '예상마감 실적' : '현재 매출 실적'}
                                 </span>
                             </h1>
                             <div className="flex items-center gap-4 text-slate-400 font-bold text-xs md:text-[11px] px-1 uppercase tracking-wider">
@@ -338,8 +338,7 @@ export default function App() {
                                                 { id: 'goal', name: '목표대비' },
                                                 { id: 'yoy', name: '전년대비' },
                                                 { id: 'mom', name: '전월대비' },
-                                                { id: 'cumulative', name: '누계' },
-                                                { id: 'forecast', name: '예상마감' }
+                                                { id: 'cumulative', name: '누계' }
                                             ].map(tab => (
                                                 <button
                                                     key={tab.id}
@@ -358,41 +357,33 @@ export default function App() {
                                 {analysisMode === 'goal' && (
                                     <>
                                         <CompactStat title="목표 금액" value={fCurrency(summary.target)} icon={Target} color="slate" />
-                                        <CompactStat title="당월 실적" value={fCurrency(summary.actual)} icon={DollarSign} color="indigo" />
-                                        <CompactStat title="현재 달성률" value={fPercent(summary.achievementRate)} icon={Zap} color="emerald" trend={summary.achievementRate} />
+                                        <CompactStat title={mainTab === 'expected' ? "마감 예상 실적" : "당월 현재 실적"} value={fCurrency(summary.actual)} icon={DollarSign} color="indigo" />
+                                        <CompactStat title={mainTab === 'expected' ? "예상 달성률" : "현재 달성률"} value={fPercent(summary.achievementRate)} icon={Zap} color="emerald" trend={summary.achievementRate} />
                                         <CompactStat title="진도 대비 격차" value={fPercent(summary.progressGap)} detail={`진도율(${fPercent(summary.progressRate)})`} icon={TrendingUp} color={summary.progressGap >= 0 ? 'emerald' : 'rose'} trend={summary.progressGap} />
                                     </>
                                 )}
                                 {analysisMode === 'yoy' && (
                                     <>
                                         <CompactStat title="전년 동기 실적" value={fCurrency(summary.lastYearActual)} icon={Calendar} color="slate" />
-                                        <CompactStat title="당월 실적" value={fCurrency(summary.actual)} icon={DollarSign} color="indigo" />
-                                        <CompactStat title="전년 대비 성장률" value={fPercent(summary.yoyGrowth)} icon={TrendingUp} color="amber" trend={summary.yoyGrowth} />
-                                        <CompactStat title="성장액" value={fCurrency(summary.actual - summary.lastYearActual)} detail="vs 전년 동기" icon={Scale} color={summary.yoyGrowth >= 0 ? 'emerald' : 'rose'} />
+                                        <CompactStat title={mainTab === 'expected' ? "마감 예상 실적" : "당월 현재 실적"} value={fCurrency(summary.actual)} icon={DollarSign} color="indigo" />
+                                        <CompactStat title={mainTab === 'expected' ? "예상 성장률 (YoY)" : "전년 대비 성장률"} value={fPercent(summary.yoyGrowth)} icon={TrendingUp} color="amber" trend={summary.yoyGrowth} />
+                                        <CompactStat title="성장액" value={fCurrency(summary.actual - summary.lastYearActual)} detail={mainTab === 'expected' ? "예상 vs 전년" : "현재 vs 전년"} icon={Scale} color={summary.yoyGrowth >= 0 ? 'emerald' : 'rose'} />
                                     </>
                                 )}
                                 {analysisMode === 'mom' && (
                                     <>
-                                        <CompactStat title="전월 실적" value={fCurrency(summary.lastMonthActual)} icon={Calendar} color="slate" />
-                                        <CompactStat title="당월 실적" value={fCurrency(summary.actual)} icon={DollarSign} color="indigo" />
-                                        <CompactStat title="전월 대비 성장률" value={fPercent(summary.momGrowth)} icon={TrendingUp} color="blue" trend={summary.momGrowth} />
-                                        <CompactStat title="성장액" value={fCurrency(summary.actual - summary.lastMonthActual)} detail="vs 전월" icon={Scale} color={summary.momGrowth >= 0 ? 'emerald' : 'rose'} />
+                                        <CompactStat title="전월 실적 (최종)" value={fCurrency(summary.lastMonthActual)} icon={Calendar} color="slate" />
+                                        <CompactStat title={mainTab === 'expected' ? "마감 예상 실적" : "당월 현재 실적"} value={fCurrency(summary.actual)} icon={DollarSign} color="indigo" />
+                                        <CompactStat title={mainTab === 'expected' ? "예상 성장률 (MoM)" : "전월 대비 성장률"} value={fPercent(summary.momGrowth)} icon={TrendingUp} color="blue" trend={summary.momGrowth} />
+                                        <CompactStat title="성장액" value={fCurrency(summary.actual - summary.lastMonthActual)} detail={mainTab === 'expected' ? "예상 vs 전월" : "현재 vs 전월"} icon={Scale} color={summary.momGrowth >= 0 ? 'emerald' : 'rose'} />
                                     </>
                                 )}
                                 {analysisMode === 'cumulative' && (
                                     <>
                                         <CompactStat title="전년 동월 누계 (YTD)" value={fCurrency(summary.cumulativeActual * 0.85)} icon={Clock} color="slate" />
-                                        <CompactStat title="당해 누계 실적" value={fCurrency(summary.cumulativeActual)} icon={DollarSign} color="indigo" />
+                                        <CompactStat title={mainTab === 'expected' ? "연간 예상 실적" : "당해 누계 실적"} value={fCurrency(summary.cumulativeActual)} icon={DollarSign} color="indigo" />
                                         <CompactStat title="누계 성장률" value="+15.4%" detail="26년 YTD vs 25년 YTD" icon={TrendingUp} color="emerald" trend={15.4} />
-                                        <CompactStat title="누계 달성률" value={fPercent(summary.cumulativeAchievement)} icon={Zap} color="violet" trend={summary.cumulativeAchievement} />
-                                    </>
-                                )}
-                                {analysisMode === 'forecast' && (
-                                    <>
-                                        <CompactStat title="마감일 기준 목표" value={fCurrency(summary.target)} icon={Target} color="slate" />
-                                        <CompactStat title="마감 예상 실적" value={fCurrency(summary.forecast)} icon={Zap} color="indigo" />
-                                        <CompactStat title="예상 달성률" value={fPercent(summary.forecast / summary.target * 100)} icon={Target} color="emerald" trend={(summary.forecast / summary.target * 100) - 100} />
-                                        <CompactStat title="예상 달성 격차" value={fCurrency(summary.forecast - summary.target)} detail="마감 시점 과부족" icon={Scale} color={summary.forecast >= summary.target ? 'emerald' : 'rose'} />
+                                        <CompactStat title={mainTab === 'expected' ? "연간 예상 달성률" : "누계 달성률"} value={fPercent(summary.cumulativeAchievement)} icon={Zap} color="violet" trend={summary.cumulativeAchievement} />
                                     </>
                                 )}
                             </div>
@@ -449,9 +440,8 @@ export default function App() {
                                                     <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '11px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                                                     <Bar dataKey={analysisMode === 'goal' ? 'achievement' :
                                                         analysisMode === 'yoy' ? 'yoy' :
-                                                            analysisMode === 'mom' ? 'mom' :
-                                                                analysisMode === 'forecast' ? 'forecastAchievement' : 'achievement'}
-                                                        name={analysisMode === 'goal' ? '달성률' : analysisMode === 'forecast' ? '예상달성률' : '성장률'}
+                                                            analysisMode === 'mom' ? 'mom' : 'achievement'}
+                                                        name={analysisMode === 'goal' ? '달성률' : '성장률'}
                                                         radius={[8, 8, 0, 0]} barSize={40} cursor="pointer">
                                                         {drillDownData.map((e, i) => (
                                                             <Cell key={i} fill={TEAM_COLORS[e.name]?.main || TEAM_COLORS['전체'].main} opacity={0.8} />
@@ -459,8 +449,7 @@ export default function App() {
                                                         <LabelList
                                                             dataKey={analysisMode === 'goal' ? 'progressGap' :
                                                                 analysisMode === 'yoy' ? 'yoy' :
-                                                                    analysisMode === 'mom' ? 'mom' :
-                                                                        analysisMode === 'forecast' ? 'forecastAchievement' : 'achievement'}
+                                                                    analysisMode === 'mom' ? 'mom' : 'achievement'}
                                                             position="top"
                                                             content={props => <CustomLabel {...props} mainTab={mainTab} analysisMode={analysisMode} />}
                                                         />
@@ -513,28 +502,28 @@ export default function App() {
                                                         <th className="py-3 px-6 w-1/4">구분</th>
                                                         {analysisMode === 'goal' ? (
                                                             <>
-                                                                <th className="py-3 text-right">실적</th>
+                                                                <th className="py-3 text-right">{mainTab === 'expected' ? '예상실적' : '현재실적'}</th>
                                                                 <th className="py-3 text-right">목표</th>
-                                                                <th className="py-3 text-center w-24">달성률</th>
+                                                                <th className="py-3 text-center w-24">{mainTab === 'expected' ? '예상달성률' : '달성률'}</th>
                                                                 <th className="py-3 pr-6 text-right">진도차이</th>
                                                             </>
                                                         ) : analysisMode === 'yoy' ? (
                                                             <>
-                                                                <th className="py-3 text-right">당월실적</th>
+                                                                <th className="py-3 text-right">{mainTab === 'expected' ? '예상실적' : '현재실적'}</th>
                                                                 <th className="py-3 text-right">전년실적</th>
                                                                 <th className="py-3 text-center w-24">성장률(YoY)</th>
                                                                 <th className="py-3 pr-6 text-right">성장액</th>
                                                             </>
                                                         ) : analysisMode === 'mom' ? (
                                                             <>
-                                                                <th className="py-3 text-right">당월실적</th>
+                                                                <th className="py-3 text-right">{mainTab === 'expected' ? '예상실적' : '현재실적'}</th>
                                                                 <th className="py-3 text-right">전월실적</th>
                                                                 <th className="py-3 text-center w-24">성장률(MoM)</th>
                                                                 <th className="py-3 pr-6 text-right">성장액</th>
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <th className="py-3 text-right">누계실적</th>
+                                                                <th className="py-3 text-right">{mainTab === 'expected' ? '연간예상' : '누계실적'}</th>
                                                                 <th className="py-3 text-right">누계목표</th>
                                                                 <th className="py-3 text-center w-24">누계달성률</th>
                                                                 <th className="py-3 pr-6 text-right">누계격차</th>
@@ -550,21 +539,20 @@ export default function App() {
                                                                 {item.name}
                                                             </td>
                                                             <td className="py-4 font-mono text-slate-700 text-right">
-                                                                {fCurrency(analysisMode === 'cumulative' ? item.cumulativeActual : analysisMode === 'forecast' ? item.forecastAmt : item.actual)}
+                                                                {fCurrency(analysisMode === 'cumulative' ? item.cumulativeActual : item.actual)}
                                                             </td>
                                                             <td className="py-4 font-mono text-slate-400 text-right">
                                                                 {fCurrency(analysisMode === 'yoy' ? item.lastYear : analysisMode === 'mom' ? item.lastMonth : analysisMode === 'cumulative' ? item.cumulativeTarget : item.target)}
                                                             </td>
                                                             <td className="py-4 px-4 text-center">
                                                                 <span className="font-bold text-slate-900">
-                                                                    {fPercent(analysisMode === 'yoy' ? item.yoy : analysisMode === 'mom' ? item.mom : analysisMode === 'cumulative' ? (item.cumulativeActual / (item.cumulativeTarget || 1) * 100) : analysisMode === 'forecast' ? item.forecastAchievement : item.achievement)}
+                                                                    {fPercent(analysisMode === 'yoy' ? item.yoy : analysisMode === 'mom' ? item.mom : analysisMode === 'cumulative' ? (item.cumulativeActual / (item.cumulativeTarget || 1) * 100) : item.achievement)}
                                                                 </span>
                                                             </td>
                                                             <td className={`py-4 pr-6 font-mono text-right font-black ${item.progressGap >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                                                 {analysisMode === 'goal' ? (item.progressGap > 0 ? `+${item.progressGap.toFixed(1)}%p` : `${item.progressGap.toFixed(1)}%p`) :
                                                                     analysisMode === 'yoy' ? fCurrency(item.actual - item.lastYear) :
-                                                                        analysisMode === 'mom' ? fCurrency(item.actual - item.lastMonth) :
-                                                                            analysisMode === 'forecast' ? fCurrency(item.forecastAmt - item.target) : fCurrency(item.cumulativeActual - item.cumulativeTarget)}
+                                                                        analysisMode === 'mom' ? fCurrency(item.actual - item.lastMonth) : fCurrency(item.cumulativeActual - item.cumulativeTarget)}
                                                             </td>
                                                         </tr>
                                                     ))}

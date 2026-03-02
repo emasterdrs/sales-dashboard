@@ -55,13 +55,25 @@ export class SalesBI {
         const lastYearWeight = filteredLastYear.reduce((sum, r) => sum + (r['중량(KG)'] || 0), 0);
         const lastMonthWeight = filteredLastMonth.reduce((sum, r) => sum + (r['중량(KG)'] || 0), 0);
 
-        const currentActual = metricType === 'amount' ? actualAmt : actualWeight;
+        let currentActual = metricType === 'amount' ? actualAmt : actualWeight;
+        const businessDays = SETTINGS.businessDays[selectedMonth] || 20;
+
+        // 예상마감 모드일 경우 실적을 예측치로 치환
+        if (mainTab === 'expected') {
+            currentActual = (currentActual / SETTINGS.currentBusinessDay) * businessDays;
+        }
+
         const currentTarget = metricType === 'amount' ? targetAmt : (targetAmt / 4500); // 중량 목표는 시뮬레이션
         const currentLastYear = metricType === 'amount' ? lastYearAmt : lastYearWeight;
         const currentLastMonth = metricType === 'amount' ? lastMonthAmt : lastMonthWeight;
 
+        const JanActualAmt = currentTarget * 0.95; // 1월은 95% 달성했다고 가정
+        const JanTargetAmt = currentTarget * 1.0;
+
+        let cumulativeActual = mainTab === 'expected' ? (JanActualAmt + currentActual) : (JanActualAmt + (metricType === 'amount' ? actualAmt : actualWeight));
+        let cumulativeTarget = JanTargetAmt + currentTarget;
+
         const achievementRate = currentTarget > 0 ? (currentActual / currentTarget) * 100 : 0;
-        const businessDays = SETTINGS.businessDays[selectedMonth] || 20;
         const progressRate = (SETTINGS.currentBusinessDay / businessDays) * 100;
 
         return {
@@ -69,14 +81,14 @@ export class SalesBI {
             target: currentTarget,
             achievementRate,
             progressRate,
-            progressGap: achievementRate - progressRate,
+            progressGap: achievementRate - (mainTab === 'expected' ? 100 : progressRate),
             lastYearActual: currentLastYear,
             lastMonthActual: currentLastMonth,
             yoyGrowth: currentLastYear > 0 ? ((currentActual - currentLastYear) / currentLastYear) * 100 : 0,
             momGrowth: currentLastMonth > 0 ? ((currentActual - currentLastMonth) / currentLastMonth) * 100 : 0,
-            cumulativeActual: currentActual * 1.8,
-            cumulativeTarget: currentTarget * 2.0,
-            cumulativeAchievement: (currentActual * 1.8) / (currentTarget * 2.0 || 1) * 100,
+            cumulativeActual,
+            cumulativeTarget,
+            cumulativeAchievement: (cumulativeActual / (cumulativeTarget || 1)) * 100,
             forecast: (currentActual / SETTINGS.currentBusinessDay) * businessDays
         };
     }
@@ -86,30 +98,44 @@ export class SalesBI {
      */
     getDrillDown(selectedMonth, level, id, nextLevel, mainTab, metricType) {
         if (nextLevel === 'team') {
-            return this.getAggregatedByTeam().map(d => this._mapMetric(d, metricType));
+            return this.getAggregatedByTeam().map(d => this._mapMetric(d, metricType, mainTab));
         } else if (nextLevel === 'person') {
-            return this.getAggregatedBySalesperson(id).map(d => this._mapMetric(d, metricType));
+            return this.getAggregatedBySalesperson(id).map(d => this._mapMetric(d, metricType, mainTab));
         } else if (nextLevel === 'customer') {
-            return this.getAggregatedByCustomer(id).map(d => this._mapMetric(d, metricType));
+            return this.getAggregatedByCustomer(id).map(d => this._mapMetric(d, metricType, mainTab));
         }
-        return this.getAggregatedByTeam().map(d => this._mapMetric(d, metricType));
+        return this.getAggregatedByTeam().map(d => this._mapMetric(d, metricType, mainTab));
     }
 
-    _mapMetric(d, metricType) {
-        if (metricType === 'amount') return d;
+    _mapMetric(d, metricType, mainTab) {
+        let actual = d.actual;
+        let weight = d.weight;
+
+        if (mainTab === 'expected') {
+            actual = d.forecast;
+            weight = d.forecastWeight;
+        }
+
+        if (metricType === 'amount') {
+            return {
+                ...d,
+                actual: actual
+            };
+        }
+
         // 중량 기준으로 필드 매핑
         return {
             ...d,
-            actual: d.weight,
+            actual: weight,
             target: d.target / 4500, // 시뮬레이션
             lastYear: d.lastYearWeight,
             lastMonth: d.lastMonthWeight,
-            achievement: (d.weight / (d.target / 4500 || 1)) * 100,
-            yoy: d.lastYearWeight > 0 ? ((d.weight - d.lastYearWeight) / d.lastYearWeight) * 100 : 0,
-            mom: d.lastMonthWeight > 0 ? ((d.weight - d.lastMonthWeight) / d.lastMonthWeight) * 100 : 0,
+            achievement: (weight / (d.target / 4500 || 1)) * 100,
+            yoy: d.lastYearWeight > 0 ? ((weight - d.lastYearWeight) / d.lastYearWeight) * 100 : 0,
+            mom: d.lastMonthWeight > 0 ? ((weight - d.lastMonthWeight) / d.lastMonthWeight) * 100 : 0,
             cumulativeTarget: (d.target / 4500) * 2.0,
-            cumulativeActual: d.weight * 1.8,
-            forecastAmt: (d.weight / SETTINGS.currentBusinessDay) * (SETTINGS.businessDays['2026-02'] || 20)
+            cumulativeActual: weight * 1.8,
+            forecastAmt: d.forecastWeight
         };
     }
 
