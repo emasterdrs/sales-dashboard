@@ -67,6 +67,12 @@ export function SettingsView({ setMasterData, setLastUpdated, selectedMonth, sub
  */
 function BusinessDaysSubView({ year }) {
     const calendarData = useMemo(() => getYearlyCalendarData(year), [year]);
+    const [editingMonth, setEditingMonth] = useState(null);
+    const [holidayNames, setHolidayNames] = useState({});
+
+    const handleNameChange = (date, name) => {
+        setHolidayNames(prev => ({ ...prev, [date]: name }));
+    };
 
     return (
         <div className="space-y-12">
@@ -107,6 +113,7 @@ function BusinessDaysSubView({ year }) {
             {calendarData.map(({ month, days }) => {
                 const totalBizDays = days.filter(d => d.isBusinessDay).length;
                 const holidays = days.filter(d => d.isHoliday || (d.isWeekend && d.holidayName));
+                const isEditing = editingMonth === month;
 
                 return (
                     <div key={month} className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all group">
@@ -139,40 +146,64 @@ function BusinessDaysSubView({ year }) {
                                     {Array.from({ length: new Date(year, month - 1, 1).getDay() }).map((_, i) => (
                                         <div key={`empty-${i}`} />
                                     ))}
-                                    {days.map(d => (
-                                        <div
-                                            key={d.date}
-                                            className={`
-                                                relative h-16 rounded-xl flex flex-col items-center justify-center border transition-all
-                                                ${d.isBusinessDay ? 'bg-white border-transparent hover:border-indigo-200 hover:bg-indigo-50/30' :
-                                                    d.isHoliday ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                                                        'bg-slate-50 border-slate-100 text-slate-400'}
-                                            `}
-                                        >
-                                            <span className="text-sm font-black">{d.day}</span>
-                                            {d.holidayName && <span className="text-[8px] font-bold mt-1 text-center truncate px-1">{d.holidayName}</span>}
-                                            {d.isBusinessDay && <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-400" />}
-                                        </div>
-                                    ))}
+                                    {days.map(d => {
+                                        const displayName = holidayNames[d.date] || d.holidayName;
+                                        return (
+                                            <div
+                                                key={d.date}
+                                                className={`
+                                                    relative h-16 rounded-xl flex flex-col items-center justify-center border transition-all
+                                                    ${d.isBusinessDay ? 'bg-white border-transparent hover:border-indigo-200 hover:bg-indigo-50/30' :
+                                                        d.isHoliday ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                                                            'bg-slate-50 border-slate-100 text-slate-400'}
+                                                `}
+                                            >
+                                                <span className="text-sm font-black">{d.day}</span>
+                                                {displayName && <span className="text-[8px] font-bold mt-1 text-center truncate px-1">{displayName}</span>}
+                                                {d.isBusinessDay && <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
                             {/* 상세 정보 (제외 사유) */}
                             <div className="p-8 bg-slate-50/30">
-                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Info size={14} className="text-indigo-400" />
-                                    영업일 제외 상세 내역
-                                </h4>
+                                <div className="flex justify-between items-center mb-6">
+                                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                        <Info size={14} className="text-indigo-400" />
+                                        영업일 제외 상세 내역
+                                    </h4>
+                                    <button
+                                        onClick={() => setEditingMonth(isEditing ? null : month)}
+                                        className={`px-4 py-1.5 rounded-lg text-[11px] font-black transition-all shadow-sm border ${isEditing
+                                            ? 'bg-indigo-600 text-white border-indigo-600'
+                                            : 'bg-white text-indigo-600 border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                    >
+                                        {isEditing ? '저장' : '편집'}
+                                    </button>
+                                </div>
                                 <div className="space-y-3">
                                     {holidays.length > 0 ? holidays.map(h => (
                                         <div key={h.date} className="flex items-center justify-between p-3 bg-white rounded-2xl border border-slate-100 shadow-sm animate-in slide-in-from-right-2">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black ${h.isHoliday ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-400'}`}>
+                                            <div className="flex items-center gap-3 flex-1 mr-2">
+                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black shrink-0 ${h.isHoliday ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-400'}`}>
                                                     {h.day}
                                                 </div>
-                                                <span className="text-xs font-black text-slate-700">{h.holidayName}</span>
+                                                {isEditing ? (
+                                                    <input
+                                                        type="text"
+                                                        value={holidayNames[h.date] || h.holidayName || ''}
+                                                        onChange={(e) => handleNameChange(h.date, e.target.value)}
+                                                        className="w-full text-xs font-black text-slate-700 bg-indigo-50 border border-indigo-100 rounded-md px-2 py-1 outline-none"
+                                                        placeholder="제외 사유 입력"
+                                                    />
+                                                ) : (
+                                                    <span className="text-xs font-black text-slate-700">{holidayNames[h.date] || h.holidayName}</span>
+                                                )}
                                             </div>
-                                            <span className="text-[10px] text-slate-300 font-bold">{h.date}</span>
+                                            {!isEditing && <span className="text-[10px] text-slate-300 font-bold shrink-0">{h.date}</span>}
                                         </div>
                                     )) : (
                                         <div className="text-center py-10">
