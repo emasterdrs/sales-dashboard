@@ -57,12 +57,13 @@ import { SettingsView } from './components/SettingsView';
 
 // 색상 팔레트 최적화
 const TEAM_COLORS = {
-    'FD팀': { main: '#6366f1', grad: 'from-indigo-600 to-blue-500' },
-    'FC팀': { main: '#10b981', grad: 'from-emerald-600 to-teal-500' },
-    'FR팀': { main: '#f59e0b', grad: 'from-amber-600 to-orange-500' },
-    'FS팀': { main: '#ef4444', grad: 'from-rose-600 to-pink-500' },
-    'FL팀': { main: '#8b5cf6', grad: 'from-violet-600 to-purple-500' },
-    '전체': { main: '#3b82f6', grad: 'from-blue-600 to-indigo-500' }
+    '영업1팀': { main: '#6366f1', grad: 'from-indigo-600 to-blue-500' },
+    '영업2팀': { main: '#10b981', grad: 'from-emerald-600 to-teal-500' },
+    '영업3팀': { main: '#f59e0b', grad: 'from-amber-600 to-orange-500' },
+    '영업4팀': { main: '#ef4444', grad: 'from-rose-600 to-pink-500' },
+    '영업5팀': { main: '#8b5cf6', grad: 'from-violet-600 to-purple-500' },
+    '전체': { main: '#3b82f6', grad: 'from-blue-600 to-indigo-500' },
+    '기타': { main: '#94a3b8', grad: 'from-slate-400 to-slate-500' }
 };
 
 const CHART_COLORS = [

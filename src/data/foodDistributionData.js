@@ -1,49 +1,40 @@
 // 식품 유통 회사 데이터 구조
 
 // 팀 구성
-export const TEAMS = ['FD팀', 'FC팀', 'FR팀', 'FS팀', 'FL팀'];
+export const TEAMS = ['영업1팀', '영업2팀', '영업3팀', '영업4팀', '영업5팀'];
 
 // 영업사원 30명
 export const SALESPERSONS = [
-    // FD팀 (6명)
-    { id: 'SP001', name: '김민수', team: 'FD팀' },
-    { id: 'SP002', name: '이영희', team: 'FD팀' },
-    { id: 'SP003', name: '박철수', team: 'FD팀' },
-    { id: 'SP004', name: '최지은', team: 'FD팀' },
-    { id: 'SP005', name: '정대호', team: 'FD팀' },
-    { id: 'SP006', name: '강서연', team: 'FD팀' },
-
-    // FC팀 (6명)
-    { id: 'SP007', name: '윤성민', team: 'FC팀' },
-    { id: 'SP008', name: '임수진', team: 'FC팀' },
-    { id: 'SP009', name: '한동욱', team: 'FC팀' },
-    { id: 'SP010', name: '오지혜', team: 'FC팀' },
-    { id: 'SP011', name: '신재현', team: 'FC팀' },
-    { id: 'SP012', name: '배유리', team: 'FC팀' },
-
-    // FR팀 (6명)
-    { id: 'SP013', name: '조현우', team: 'FR팀' },
-    { id: 'SP014', name: '송미경', team: 'FR팀' },
-    { id: 'SP015', name: '권태양', team: 'FR팀' },
-    { id: 'SP016', name: '안소희', team: 'FR팀' },
-    { id: 'SP017', name: '홍준표', team: 'FR팀' },
-    { id: 'SP018', name: '서은아', team: 'FR팀' },
-
-    // FS팀 (6명)
-    { id: 'SP019', name: '노승우', team: 'FS팀' },
-    { id: 'SP020', name: '문지원', team: 'FS팀' },
-    { id: 'SP021', name: '황인호', team: 'FS팀' },
-    { id: 'SP022', name: '유하나', team: 'FS팀' },
-    { id: 'SP023', name: '장민재', team: 'FS팀' },
-    { id: 'SP024', name: '나예린', team: 'FS팀' },
-
-    // FL팀 (6명)
-    { id: 'SP025', name: '표정훈', team: 'FL팀' },
-    { id: 'SP026', name: '차수빈', team: 'FL팀' },
-    { id: 'SP027', name: '구본석', team: 'FL팀' },
-    { id: 'SP028', name: '방민지', team: 'FL팀' },
-    { id: 'SP029', name: '탁준영', team: 'FL팀' },
-    { id: 'SP030', name: '설아영', team: 'FL팀' },
+    { id: 'SP001', name: '새 사원1', team: '영업1팀' },
+    { id: 'SP002', name: '새 사원2', team: '영업1팀' },
+    { id: 'SP003', name: '새 사원3', team: '영업1팀' },
+    { id: 'SP004', name: '새 사원4', team: '영업1팀' },
+    { id: 'SP005', name: '새 사원5', team: '영업1팀' },
+    { id: 'SP006', name: '새 사원6', team: '영업1팀' },
+    { id: 'SP007', name: '새 사원7', team: '영업2팀' },
+    { id: 'SP008', name: '새 사원8', team: '영업2팀' },
+    { id: 'SP009', name: '새 사원9', team: '영업2팀' },
+    { id: 'SP010', name: '새 사원10', team: '영업2팀' },
+    { id: 'SP011', name: '새 사원11', team: '영업2팀' },
+    { id: 'SP012', name: '새 사원12', team: '영업2팀' },
+    { id: 'SP013', name: '새 사원13', team: '영업3팀' },
+    { id: 'SP014', name: '새 사원14', team: '영업3팀' },
+    { id: 'SP015', name: '새 사원15', team: '영업3팀' },
+    { id: 'SP016', name: '새 사원16', team: '영업3팀' },
+    { id: 'SP017', name: '새 사원17', team: '영업3팀' },
+    { id: 'SP018', name: '새 사원18', team: '영업3팀' },
+    { id: 'SP019', name: '새 사원19', team: '영업4팀' },
+    { id: 'SP020', name: '새 사원20', team: '영업4팀' },
+    { id: 'SP021', name: '새 사원21', team: '영업4팀' },
+    { id: 'SP022', name: '새 사원22', team: '영업4팀' },
+    { id: 'SP023', name: '새 사원23', team: '영업4팀' },
+    { id: 'SP024', name: '새 사원24', team: '영업4팀' },
+    { id: 'SP025', name: '새 사원25', team: '영업5팀' },
+    { id: 'SP026', name: '새 사원26', team: '영업5팀' },
+    { id: 'SP027', name: '새 사원27', team: '영업5팀' },
+    { id: 'SP028', name: '새 사원28', team: '영업5팀' },
+    { id: 'SP029', name: '새 사원29', team: '영업5팀' },
+    { id: 'SP030', name: '새 사원30', team: '영업5팀' },
 ];
 
 // 품목 유형별 품목 (각 유형당 30개)

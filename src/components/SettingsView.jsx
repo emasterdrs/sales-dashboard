@@ -8,6 +8,8 @@ import {
 import { SETTINGS } from '../data/mockEngine';
 import { calculateBusinessDays, calculateCurrentBusinessDay, getYearlyCalendarData } from '../lib/dateUtils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { generateFullDataset, convertToCSV, downloadCSV } from '../data/generateSalesData';
+import { SALESPERSONS, ALL_CUSTOMERS, ALL_PRODUCTS, PRODUCT_TYPES } from '../data/foodDistributionData';
 
 export function SettingsView({ masterData, setMasterData, setLastUpdated, selectedMonth, subView }) {
     const [selectedYear, setSelectedYear] = useState('2026');
@@ -900,6 +902,17 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
         e.target.value = '';
     };
 
+    const handleDownloadExample = (type) => {
+        const dataset = generateFullDataset();
+        if (type === 'sales') {
+            const csv = convertToCSV(dataset.actual);
+            downloadCSV(csv, 'Sales_Data_Example.csv');
+        } else {
+            const csv = convertToCSV(dataset.target);
+            downloadCSV(csv, 'Target_Data_Example.csv');
+        }
+    };
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <SettingCard title="매출 실적 파일" icon={Filter} desc="ERP 시스템에서 추출된 마스타 데이터 업로드">
@@ -907,7 +920,10 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
                 <button onClick={() => salesInputRef.current.click()} className="w-full py-16 border-2 border-dashed border-indigo-200 rounded-[32px] flex flex-col items-center justify-center hover:bg-indigo-50 transition-all group">
                     <Filter className="text-indigo-500 mb-4 group-hover:scale-110 transition-transform" size={40} />
                     <span className="text-lg font-black text-slate-800">엑셀/CSV 파일 선택</span>
-                    <span className="text-xs text-slate-400 font-bold mt-2">Duri Sales Master Format (.xlsx)</span>
+                    <span className="text-xs text-slate-400 font-bold mt-2">Duri Sales Master Format (.xlsx/.csv)</span>
+                </button>
+                <button onClick={() => handleDownloadExample('sales')} className="w-full mt-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-colors">
+                    + 판매데이터 예시 다운로드 (CSV)
                 </button>
             </SettingCard>
 
@@ -916,7 +932,10 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
                 <button onClick={() => targetInputRef.current.click()} className="w-full py-16 border-2 border-dashed border-emerald-200 rounded-[32px] flex flex-col items-center justify-center hover:bg-emerald-50 transition-all group">
                     <Target className="text-emerald-500 mb-4 group-hover:scale-110 transition-transform" size={40} />
                     <span className="text-lg font-black text-slate-800">목표 파일 업로드</span>
-                    <span className="text-xs text-slate-400 font-bold mt-2">Duri Target Schema (.csv)</span>
+                    <span className="text-xs text-slate-400 font-bold mt-2">Duri Target Schema (.csv/.xlsx)</span>
+                </button>
+                <button onClick={() => handleDownloadExample('target')} className="w-full mt-4 py-3 bg-emerald-50 text-emerald-600 rounded-xl font-bold text-sm hover:bg-emerald-100 transition-colors">
+                    + 목표데이터 예시 다운로드 (CSV)
                 </button>
             </SettingCard>
         </div>
