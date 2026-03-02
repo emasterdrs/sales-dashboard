@@ -272,11 +272,11 @@ export default function App() {
                             <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition-all hover:border-indigo-500/30">
                                 <table className="text-[10px] md:text-[11px] leading-tight min-w-full">
                                     <thead className="bg-slate-100 border-b border-slate-200">
-                                        <tr className="text-slate-500 font-bold uppercase tracking-tighter whitespace-nowrap">
-                                            <th className="px-3 md:px-4 py-1.5 md:py-2 border-r border-slate-200">영업일</th>
-                                            <th className="px-3 md:px-4 py-1.5 md:py-2 border-r border-slate-200">총 영업일</th>
-                                            <th className="px-3 md:px-4 py-1.5 md:py-2 text-indigo-600 font-black">진도율</th>
-                                            <th className="px-3 md:px-4 py-1.5 md:py-2">1일 평균</th>
+                                        <tr className="text-slate-500 font-black uppercase tracking-tighter whitespace-nowrap">
+                                            <th className="px-3 md:px-4 py-1.5 md:py-2 border-r border-slate-200 text-sm md:text-base">영업일</th>
+                                            <th className="px-3 md:px-4 py-1.5 md:py-2 border-r border-slate-200 text-sm md:text-base">총 영업일</th>
+                                            <th className="px-3 md:px-4 py-1.5 md:py-2 text-indigo-600 font-black text-sm md:text-base">진도율</th>
+                                            <th className="px-3 md:px-4 py-1.5 md:py-2 text-sm md:text-base">1일 평균</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-center font-black">
@@ -284,7 +284,7 @@ export default function App() {
                                             <td className="px-3 md:px-4 py-1.5 md:py-2 text-slate-900 text-lg md:text-xl border-r border-slate-200">{SETTINGS.currentBusinessDay}</td>
                                             <td className="px-3 md:px-4 py-1.5 md:py-2 text-slate-500 text-lg md:text-xl border-r border-slate-200">{SETTINGS.businessDays[selectedMonth] || 20}</td>
                                             <td className="px-3 md:px-4 py-1.5 md:py-2 text-indigo-600 border-r border-slate-200 text-xl md:text-2xl tracking-tighter">{((SETTINGS.currentBusinessDay / (SETTINGS.businessDays[selectedMonth] || 20)) * 100).toFixed(1)}%</td>
-                                            <td className="px-3 md:px-4 py-1.5 md:py-2 text-slate-400 text-[10px] md:text-sm font-mono">{(100 / (SETTINGS.businessDays[selectedMonth] || 20)).toFixed(1)}%</td>
+                                            <td className="px-3 md:px-4 py-1.5 md:py-2 text-slate-400 text-lg md:text-xl font-mono">{(100 / (SETTINGS.businessDays[selectedMonth] || 20)).toFixed(1)}%</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -350,8 +350,8 @@ export default function App() {
                                         <div className="lg:col-span-3 bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm flex flex-col">
                                             <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center whitespace-nowrap overflow-x-auto no-scrollbar">
                                                 <div className="flex items-center gap-4">
-                                                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 shrink-0">
-                                                        <Activity size={16} className="text-indigo-500" />
+                                                    <h3 className="text-base font-black text-slate-600 uppercase tracking-widest flex items-center gap-2 shrink-0">
+                                                        <Activity size={18} className="text-indigo-500" />
                                                         분석 현황
                                                     </h3>
                                                     {path.length > 1 && (
@@ -366,14 +366,14 @@ export default function App() {
                                                     )}
                                                 </div>
                                                 <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 ml-4 shrink-0">
-                                                    <button onClick={() => setMetricType('amount')} className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
-                                                    <button onClick={() => setMetricType('weight')} className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>중량</button>
+                                                    <button onClick={() => setMetricType('amount')} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${metricType === 'amount' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>금액</button>
+                                                    <button onClick={() => setMetricType('weight')} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${metricType === 'weight' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}>중량</button>
                                                 </div>
                                             </div>
                                             <div className="overflow-x-auto custom-scrollbar flex-1 min-h-[400px]">
                                                 <table className="w-full text-left table-fixed min-w-[600px]">
                                                     <thead className="sticky top-0 z-10">
-                                                        <tr className="text-slate-500 font-black border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-tighter">
+                                                        <tr className="text-slate-500 font-black border-b border-slate-100 bg-slate-50 text-sm md:text-base uppercase tracking-tighter">
                                                             <th className="py-5 px-6 w-40">
                                                                 {path.length === 1 ? '영업팀' :
                                                                     path.length === 2 ? '영업사원' :
@@ -433,8 +433,8 @@ export default function App() {
                                         {/* Performance Horizontal Chart (RIGHT - 2/5) */}
                                         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm flex flex-col">
                                             <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-                                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                                                    <TrendingUp size={16} className="text-indigo-600" />
+                                                <h3 className="text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                                    <TrendingUp size={18} className="text-indigo-600" />
                                                     달성률 시각화
                                                 </h3>
                                             </div>
@@ -442,18 +442,18 @@ export default function App() {
                                                 <ResponsiveContainer>
                                                     <BarChart data={drillDownData} margin={{ left: -10, right: 10, top: 40, bottom: 0 }}>
                                                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 900, fill: '#64748b' }} />
+                                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 13, fontWeight: 900, fill: '#64748b' }} />
                                                         <YAxis hide domain={[0, 110]} />
                                                         <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', fontSize: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
 
-                                                        <ReferenceLine y={100} stroke="#cbd5e1" strokeDasharray="3 3" label={{ position: 'top', value: '목표 (100%)', fill: '#94a3b8', fontSize: 10, fontWeight: 900 }} />
-                                                        <ReferenceLine y={summary.progressRate} stroke="#6366f1" strokeDasharray="5 5" strokeWidth={2} label={{ position: 'top', value: `진도율 (${summary.progressRate.toFixed(1)}%)`, fill: '#6366f1', fontSize: 10, fontWeight: 900 }} />
+                                                        <ReferenceLine y={100} stroke="#cbd5e1" strokeDasharray="3 3" label={{ position: 'top', value: '목표 (100%)', fill: '#94a3b8', fontSize: 12, fontWeight: 900 }} />
+                                                        <ReferenceLine y={summary.progressRate} stroke="#6366f1" strokeDasharray="5 5" strokeWidth={2} label={{ position: 'top', value: `진도율 (${summary.progressRate.toFixed(1)}%)`, fill: '#6366f1', fontSize: 12, fontWeight: 900 }} />
 
                                                         <Bar dataKey="achievement" radius={[10, 10, 0, 0]} barSize={40}>
                                                             {drillDownData.map((e, i) => (
                                                                 <Cell key={i} fill={TEAM_COLORS[e.name]?.main || TEAM_COLORS['전체'].main} opacity={0.8} />
                                                             ))}
-                                                            <LabelList dataKey="achievement" position="top" formatter={(v) => `${v.toFixed(1)}%`} fontSize={11} fontWeight={900} fill="#475569" />
+                                                            <LabelList dataKey="achievement" position="top" formatter={(v) => `${v.toFixed(1)}%`} fontSize={13} fontWeight={900} fill="#475569" />
                                                         </Bar>
                                                     </BarChart>
                                                 </ResponsiveContainer>
