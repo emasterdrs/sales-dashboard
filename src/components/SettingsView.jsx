@@ -29,17 +29,17 @@ export function SettingsView({ masterData, setMasterData, setLastUpdated, select
                 </div>
 
                 {subView === 'bizDays' && (
-                    <div className="flex items-center gap-3 bg-white p-2 px-4 rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-2 bg-white p-2 pl-4 pr-3 rounded-2xl border border-slate-200 shadow-sm relative">
                         <CalendarDays size={20} className="text-indigo-500" />
                         <select
                             value={selectedYear}
                             onChange={(e) => setSelectedYear(e.target.value)}
-                            className="bg-transparent font-black text-slate-700 outline-none appearance-none pr-6 cursor-pointer"
+                            className="bg-transparent font-black text-slate-700 outline-none appearance-none pr-6 cursor-pointer w-full z-10"
                         >
                             <option value="2026">2026년</option>
                             <option value="2025">2025년</option>
                         </select>
-                        <ChevronDown size={14} className="-ml-6 text-slate-400 pointer-events-none" />
+                        <ChevronDown size={14} className="absolute right-3 text-slate-400 pointer-events-none z-0" />
                     </div>
                 )}
             </header>
@@ -404,7 +404,14 @@ function OrganizationSubView({ setMasterData, masterData }) {
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <SettingCard title="영업팀 관리" icon={Users} desc="활성 영업팀 및 조직 체계 구성 (미등록 팀 데이터는 '기타'로 합산)">
+            <SettingCard title="영업팀 관리" icon={Users} desc={
+                <>
+                    활성 영업팀 및 조직 체계 구성 (미등록 팀 데이터는 '기타'로 합산)
+                    <span className="block mt-1.5 text-[12px] font-bold text-slate-400 tracking-tight flex items-center gap-1.5">
+                        <Info size={12} className="text-indigo-400" /> 여기서 설정한 배치 순서에 따라 메인 대시보드에도 순서대로 표시됩니다.
+                    </span>
+                </>
+            }>
                 <div className="space-y-3">
                     {teams.map((team, index) => (
                         <div
@@ -413,14 +420,6 @@ function OrganizationSubView({ setMasterData, masterData }) {
                             onClick={() => setSelectedTeam(team.id)}
                         >
                             <div className="flex items-center gap-3">
-                                <div className="flex flex-col gap-0.5 mr-2">
-                                    <button onClick={(e) => handleMoveTeamUp(e, index)} disabled={index === 0} className={`p-0.5 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors ${index === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}>
-                                        <ArrowUp size={14} strokeWidth={3} />
-                                    </button>
-                                    <button onClick={(e) => handleMoveTeamDown(e, index)} disabled={index === teams.length - 1} className={`p-0.5 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors ${index === teams.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}`}>
-                                        <ArrowDown size={14} strokeWidth={3} />
-                                    </button>
-                                </div>
                                 {editingTeamId === team.id ? (
                                     <div className="flex items-center gap-2">
                                         <input
@@ -441,6 +440,14 @@ function OrganizationSubView({ setMasterData, masterData }) {
                                 <div className="flex items-center gap-2 mt-3 md:mt-0">
                                     <button onClick={(e) => { e.stopPropagation(); setTeamEditName(team.name); setEditingTeamId(team.id); }} className="text-[11px] font-bold px-3 py-1 rounded-md bg-slate-100 text-slate-500 hover:bg-indigo-100 hover:text-indigo-600">수정</button>
                                     <button onClick={(e) => { e.stopPropagation(); handleDeleteTeam(team.id); }} className="text-[11px] font-bold px-3 py-1 rounded-md bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600">삭제</button>
+                                    <div className="flex items-center border border-slate-200 rounded-md ml-2 overflow-hidden bg-slate-50">
+                                        <button onClick={(e) => handleMoveTeamUp(e, index)} disabled={index === 0} className={`p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white transition-colors border-r border-slate-200 ${index === 0 ? 'opacity-30 cursor-not-allowed' : ''}`} title="순서 위로 이동">
+                                            <ArrowUp size={14} strokeWidth={3} />
+                                        </button>
+                                        <button onClick={(e) => handleMoveTeamDown(e, index)} disabled={index === teams.length - 1} className={`p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white transition-colors ${index === teams.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}`} title="순서 아래로 이동">
+                                            <ArrowDown size={14} strokeWidth={3} />
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
