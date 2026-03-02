@@ -648,6 +648,7 @@ function TypesSubView({ masterData, setMasterData }) {
     ]);
     const [editingTypeId, setEditingTypeId] = useState(null);
     const [typeEditName, setTypeEditName] = useState('');
+    const [selectedTypeIds, setSelectedTypeIds] = useState(new Set());
 
     useEffect(() => {
         try {
@@ -694,6 +695,39 @@ function TypesSubView({ masterData, setMasterData }) {
         const updated = types.filter(t => t.id !== id);
         setTypes(updated);
         saveChanges(updated);
+
+        if (selectedTypeIds.has(id)) {
+            const newSet = new Set(selectedTypeIds);
+            newSet.delete(id);
+            setSelectedTypeIds(newSet);
+        }
+    };
+
+    const handleToggleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedTypeIds(new Set(types.map(t => t.id)));
+        } else {
+            setSelectedTypeIds(new Set());
+        }
+    };
+
+    const handleToggleSelectType = (id) => {
+        const newSet = new Set(selectedTypeIds);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        setSelectedTypeIds(newSet);
+    };
+
+    const handleDeleteSelected = () => {
+        if (selectedTypeIds.size === 0) return;
+        if (!confirm(`선택한 ${selectedTypeIds.size}개의 유형을 삭제하시겠습니까? 관련 데이터가 "기타"로 분류됩니다.`)) return;
+        const updated = types.filter(t => !selectedTypeIds.has(t.id));
+        setTypes(updated);
+        saveChanges(updated);
+        setSelectedTypeIds(new Set());
     };
 
     const handleSaveTypeEdit = (id) => {
@@ -746,6 +780,27 @@ function TypesSubView({ masterData, setMasterData }) {
                 </div>
             </div>
             <div className="max-w-3xl space-y-3">
+                {types.length > 0 && (
+                    <div className="flex items-center justify-between px-4 py-2 bg-slate-50 rounded-2xl border border-slate-200">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={selectedTypeIds.size === types.length && types.length > 0}
+                                onChange={handleToggleSelectAll}
+                                className="w-4 h-4 text-amber-500 rounded border-slate-300 focus:ring-amber-500 cursor-pointer"
+                            />
+                            <span className="text-sm font-black text-slate-700">전체 선택</span>
+                        </label>
+                        {selectedTypeIds.size > 0 && (
+                            <button
+                                onClick={handleDeleteSelected}
+                                className="text-xs font-bold px-4 py-1.5 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600 transition-colors border border-rose-100"
+                            >
+                                선택 항목 삭제 ({selectedTypeIds.size})
+                            </button>
+                        )}
+                    </div>
+                )}
                 {types.map((type, index) => (
                     <div
                         key={type.id || typeof type === 'string' ? type : `type-${index}`}
