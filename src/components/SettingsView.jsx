@@ -303,8 +303,13 @@ function OrganizationSubView({ setMasterData, masterData }) {
         try {
             const savedData = localStorage.getItem('dashboard_settings');
             const data = savedData ? JSON.parse(savedData) : {};
-            if (data.teams) setTeams(data.teams);
-            if (data.salespersons) setSalespersons(data.salespersons);
+            // Validate schema robustly to prevent runtime crashes from old data structures
+            if (data.teams && Array.isArray(data.teams) && typeof data.teams[0] === 'object') {
+                setTeams(data.teams);
+            }
+            if (data.salespersons && Array.isArray(data.salespersons)) {
+                setSalespersons(data.salespersons);
+            }
         } catch (e) {
             console.warn('Failed to load from localStorage', e);
         }
@@ -381,13 +386,13 @@ function OrganizationSubView({ setMasterData, masterData }) {
                 <div className="space-y-3">
                     {teams.map(team => (
                         <div
-                            key={team.id}
+                            key={team.id || typeof team === 'string' ? team : `team-${Math.random()}`}
                             className={`flex flex-col md:flex-row md:items-center justify-between p-4 cursor-pointer rounded-2xl border shadow-sm transition-all ${selectedTeam === team.id ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-500/20' : 'bg-white border-slate-100'}`}
                             onClick={() => setSelectedTeam(team.id)}
                         >
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-500 font-black shrink-0">
-                                    {team.name[0] || '?'}
+                                    {team?.name?.[0] || (typeof team === 'string' ? team[0] : '?')}
                                 </div>
                                 {editingTeamId === team.id ? (
                                     <div className="flex items-center gap-2">
@@ -402,7 +407,7 @@ function OrganizationSubView({ setMasterData, masterData }) {
                                         <button onClick={(e) => { e.stopPropagation(); handleSaveTeamEdit(team.id); }} className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold">확인</button>
                                     </div>
                                 ) : (
-                                    <span className="text-sm text-slate-800 font-black">{team.name}</span>
+                                    <span className="text-sm text-slate-800 font-black">{team?.name || (typeof team === 'string' ? team : '알 수 없는 팀')}</span>
                                 )}
                             </div>
                             {editingTeamId !== team.id && (
@@ -419,7 +424,7 @@ function OrganizationSubView({ setMasterData, masterData }) {
                 </div>
             </SettingCard>
 
-            <SettingCard title="영업사원 마스터" icon={Building2} desc={selectedTeam ? `선택된 팀: ${teams.find(t => t.id === selectedTeam)?.name}` : "먼저 대상 팀을 선택해주세요"}>
+            <SettingCard title="영업사원 마스터" icon={Building2} desc={selectedTeam ? `선택된 팀: ${teams.find(t => t.id === selectedTeam)?.name || '이름 없음'}` : "먼저 대상 팀을 선택해주세요"}>
                 {selectedTeam ? (
                     <div className="space-y-3">
                         {currentSpList.length === 0 && (
@@ -431,7 +436,7 @@ function OrganizationSubView({ setMasterData, masterData }) {
                             <div key={sp.id} className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 font-black text-xs">
-                                        {sp.name[0] || '?'}
+                                        {sp?.name?.[0] || '?'}
                                     </div>
                                     {editingSpId === sp.id ? (
                                         <div className="flex items-center gap-2">
@@ -445,7 +450,7 @@ function OrganizationSubView({ setMasterData, masterData }) {
                                             <button onClick={() => handleSaveSpEdit(sp.id)} className="text-[11px] bg-emerald-600 text-white px-2 py-1 rounded-md font-bold">저장</button>
                                         </div>
                                     ) : (
-                                        <span className="text-[13px] text-slate-700 font-black">{sp.name}</span>
+                                        <span className="text-[13px] text-slate-700 font-black">{sp?.name || '이름 없음'}</span>
                                     )}
                                 </div>
                                 {editingSpId !== sp.id && (
