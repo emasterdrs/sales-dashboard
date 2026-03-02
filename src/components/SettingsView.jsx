@@ -9,7 +9,7 @@ import { SETTINGS } from '../data/mockEngine';
 import { calculateBusinessDays, calculateCurrentBusinessDay, getYearlyCalendarData } from '../lib/dateUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export function SettingsView({ setMasterData, setLastUpdated, selectedMonth, subView }) {
+export function SettingsView({ masterData, setMasterData, setLastUpdated, selectedMonth, subView }) {
     const [selectedYear, setSelectedYear] = useState('2026');
 
     return (
