@@ -20,10 +20,25 @@ export const SETTINGS = {
  */
 export class SalesBI {
     constructor(actualData, targetData, lastYearData = [], lastMonthData = []) {
-        this.actual = actualData;
-        this.target = targetData;
-        this.lastYear = lastYearData;
-        this.lastMonth = lastMonthData;
+        let registeredTeamNames = ['FD팀', 'FC팀', 'FR팀', 'FS팀', 'FL팀'];
+        try {
+            const savedData = localStorage.getItem('dashboard_settings');
+            const settingsData = savedData ? JSON.parse(savedData) : {};
+            if (settingsData.teams) {
+                registeredTeamNames = settingsData.teams.map(t => t.name);
+            }
+        } catch (e) { }
+
+        const mapTeam = (r) => {
+            const t = r['영업팀'];
+            const mappedName = registeredTeamNames.includes(t) ? t : '기타';
+            return { ...r, '영업팀': mappedName };
+        };
+
+        this.actual = actualData.map(mapTeam);
+        this.target = targetData.map(mapTeam);
+        this.lastYear = lastYearData.map(mapTeam);
+        this.lastMonth = lastMonthData.map(mapTeam);
     }
 
     /**

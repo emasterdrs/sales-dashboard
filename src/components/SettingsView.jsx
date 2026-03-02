@@ -53,7 +53,7 @@ export function SettingsView({ setMasterData, setLastUpdated, selectedMonth, sub
                     transition={{ duration: 0.3 }}
                 >
                     {subView === 'bizDays' && <BusinessDaysSubView year={selectedYear} />}
-                    {subView === 'org' && <OrganizationSubView />}
+                    {subView === 'org' && <OrganizationSubView setMasterData={setMasterData} masterData={masterData} />}
                     {subView === 'types' && <TypesSubView />}
                     {subView === 'data' && <DataUploadSubView setMasterData={setMasterData} setLastUpdated={setLastUpdated} />}
                 </motion.div>
@@ -288,35 +288,183 @@ function BusinessDaysSubView({ year }) {
 /**
  * 2. 조직 및 인원 설정
  */
-function OrganizationSubView() {
+function OrganizationSubView({ setMasterData, masterData }) {
+    const [teams, setTeams] = useState([{ id: 1, name: 'FD팀' }, { id: 2, name: 'FC팀' }, { id: 3, name: 'FR팀' }, { id: 4, name: 'FS팀' }, { id: 5, name: 'FL팀' }]);
+    const [salespersons, setSalespersons] = useState([]);
+    const [selectedTeam, setSelectedTeam] = useState(null);
+
+    const [editingTeamId, setEditingTeamId] = useState(null);
+    const [teamEditName, setTeamEditName] = useState('');
+
+    const [editingSpId, setEditingSpId] = useState(null);
+    const [spEditName, setSpEditName] = useState('');
+
+    useEffect(() => {
+        try {
+            const savedData = localStorage.getItem('dashboard_settings');
+            const data = savedData ? JSON.parse(savedData) : {};
+            if (data.teams) setTeams(data.teams);
+            if (data.salespersons) setSalespersons(data.salespersons);
+        } catch (e) {
+            console.warn('Failed to load from localStorage', e);
+        }
+    }, []);
+
+    const saveChanges = (newTeams, newSps) => {
+        try {
+            const savedData = localStorage.getItem('dashboard_settings');
+            let data = savedData ? JSON.parse(savedData) : {};
+            data.teams = newTeams;
+            data.salespersons = newSps;
+            localStorage.setItem('dashboard_settings', JSON.stringify(data));
+            // Force re-calc of mock engine bucketting
+            if (setMasterData && masterData) {
+                setMasterData({ ...masterData });
+            }
+        } catch (e) {
+            console.warn('Failed to save to localStorage', e);
+        }
+    };
+
+    const handleAddTeam = () => {
+        const newTeam = { id: Date.now(), name: '새 영업팀' };
+        const updated = [...teams, newTeam];
+        setTeams(updated);
+        saveChanges(updated, salespersons);
+        setEditingTeamId(newTeam.id);
+        setTeamEditName('새 영업팀');
+    };
+
+    const handleDeleteTeam = (id) => {
+        if (!window.confirm('해당 팀을 삭제하시겠습니까? 데이터는 "기타" 팀으로 집계됩니다.')) return;
+        const updated = teams.filter(t => t.id !== id);
+        setTeams(updated);
+        if (selectedTeam === id) setSelectedTeam(null);
+        saveChanges(updated, salespersons);
+    };
+
+    const handleSaveTeamEdit = (id) => {
+        const updated = teams.map(t => t.id === id ? { ...t, name: teamEditName } : t);
+        setTeams(updated);
+        setEditingTeamId(null);
+        saveChanges(updated, salespersons);
+    };
+
+    const handleAddSp = () => {
+        if (!selectedTeam) return alert('먼저 팀을 선택해주세요.');
+        const newSp = { id: Date.now(), teamId: selectedTeam, name: '새 사원' };
+        const updated = [...salespersons, newSp];
+        setSalespersons(updated);
+        saveChanges(teams, updated);
+        setEditingSpId(newSp.id);
+        setSpEditName('새 사원');
+    };
+
+    const handleDeleteSp = (id) => {
+        const updated = salespersons.filter(s => s.id !== id);
+        setSalespersons(updated);
+        saveChanges(teams, updated);
+    };
+
+    const handleSaveSpEdit = (id) => {
+        const updated = salespersons.map(s => s.id === id ? { ...s, name: spEditName } : s);
+        setSalespersons(updated);
+        setEditingSpId(null);
+        saveChanges(teams, updated);
+    };
+
+    const currentSpList = salespersons.filter(s => s.teamId === selectedTeam);
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <SettingCard title="영업팀 관리" icon={Users} desc="활성 영업팀 및 조직 체계 구성">
+            <SettingCard title="영업팀 관리" icon={Users} desc="활성 영업팀 및 조직 체계 구성 (미등록 팀 데이터는 '기타'로 합산)">
                 <div className="space-y-3">
-                    {['FD팀', 'FC팀', 'FR팀', 'FS팀', 'FL팀'].map(team => (
-                        <div key={team} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                    {teams.map(team => (
+                        <div
+                            key={team.id}
+                            className={`flex flex-col md:flex-row md:items-center justify-between p-4 cursor-pointer rounded-2xl border shadow-sm transition-all ${selectedTeam === team.id ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-500/20' : 'bg-white border-slate-100'}`}
+                            onClick={() => setSelectedTeam(team.id)}
+                        >
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500 font-black">
-                                    {team[0]}
+                                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-500 font-black shrink-0">
+                                    {team.name[0] || '?'}
                                 </div>
-                                <span className="text-sm text-slate-800 font-black">{team}</span>
+                                {editingTeamId === team.id ? (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            autoFocus
+                                            type="text"
+                                            value={teamEditName}
+                                            onChange={(e) => setTeamEditName(e.target.value)}
+                                            className="px-3 py-1.5 border border-indigo-200 rounded-lg text-sm font-black outline-none focus:ring-2 ring-indigo-500/30"
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                        <button onClick={(e) => { e.stopPropagation(); handleSaveTeamEdit(team.id); }} className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold">확인</button>
+                                    </div>
+                                ) : (
+                                    <span className="text-sm text-slate-800 font-black">{team.name}</span>
+                                )}
                             </div>
-                            <div className="w-10 h-5 bg-emerald-500 rounded-full relative">
-                                <div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full shadow-sm" />
-                            </div>
+                            {editingTeamId !== team.id && (
+                                <div className="flex items-center gap-2 mt-3 md:mt-0">
+                                    <button onClick={(e) => { e.stopPropagation(); setTeamEditName(team.name); setEditingTeamId(team.id); }} className="text-[11px] font-bold px-3 py-1 rounded-md bg-slate-100 text-slate-500 hover:bg-indigo-100 hover:text-indigo-600">수정</button>
+                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteTeam(team.id); }} className="text-[11px] font-bold px-3 py-1 rounded-md bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600">삭제</button>
+                                </div>
+                            )}
                         </div>
                     ))}
-                    <button className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-black hover:bg-slate-50 transition-all mt-4">
-                        + 새로운 팀 추가
+                    <button onClick={handleAddTeam} className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-black hover:bg-slate-50 hover:border-indigo-200 hover:text-indigo-500 transition-all mt-4">
+                        + 새로운 영업팀 추가
                     </button>
                 </div>
             </SettingCard>
 
-            <SettingCard title="영업사원 마스터" icon={Building2} desc="팀별 전담 사원 및 권한 관리">
-                <div className="p-8 text-center bg-slate-50 border border-slate-200 border-dashed rounded-[32px]">
-                    <p className="text-slate-400 font-bold">전체 영업사원 48명 리스트 관리</p>
-                    <button className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black">상세 데이터 보기</button>
-                </div>
+            <SettingCard title="영업사원 마스터" icon={Building2} desc={selectedTeam ? `선택된 팀: ${teams.find(t => t.id === selectedTeam)?.name}` : "먼저 대상 팀을 선택해주세요"}>
+                {selectedTeam ? (
+                    <div className="space-y-3">
+                        {currentSpList.length === 0 && (
+                            <div className="py-8 text-center text-sm font-bold text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                등록된 담당 사원이 없습니다.
+                            </div>
+                        )}
+                        {currentSpList.map(sp => (
+                            <div key={sp.id} className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 font-black text-xs">
+                                        {sp.name[0] || '?'}
+                                    </div>
+                                    {editingSpId === sp.id ? (
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                autoFocus
+                                                type="text"
+                                                value={spEditName}
+                                                onChange={(e) => setSpEditName(e.target.value)}
+                                                className="px-2 py-1 border border-emerald-200 rounded-md text-[13px] font-black outline-none focus:ring-2 ring-emerald-500/30"
+                                            />
+                                            <button onClick={() => handleSaveSpEdit(sp.id)} className="text-[11px] bg-emerald-600 text-white px-2 py-1 rounded-md font-bold">저장</button>
+                                        </div>
+                                    ) : (
+                                        <span className="text-[13px] text-slate-700 font-black">{sp.name}</span>
+                                    )}
+                                </div>
+                                {editingSpId !== sp.id && (
+                                    <div className="flex items-center gap-1.5 mt-2 md:mt-0">
+                                        <button onClick={() => { setSpEditName(sp.name); setEditingSpId(sp.id); }} className="text-[11px] font-bold px-2 py-1 rounded bg-slate-100 text-slate-500 hover:bg-emerald-100 hover:text-emerald-600">수정</button>
+                                        <button onClick={() => handleDeleteSp(sp.id)} className="text-[11px] font-bold px-2 py-1 rounded bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600">삭제</button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        <button onClick={handleAddSp} className="w-full py-3 mt-4 border border-dashed border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50 rounded-xl text-emerald-600 text-xs font-black transition-all">
+                            + 영업사원 등록
+                        </button>
+                    </div>
+                ) : (
+                    <div className="p-8 text-center bg-slate-50 border border-slate-200 border-dashed rounded-[32px]">
+                        <p className="text-slate-400 font-bold">좌측에서 관리할 영업팀을 선택해주세요</p>
+                    </div>
+                )}
             </SettingCard>
         </div>
     );
