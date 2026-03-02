@@ -2,7 +2,7 @@
  * [프로젝트 30억] 표준 데이터 생성 엔진
  * 기획안의 [매출업로드 표준 항목] 및 [목표업로드 표준 항목] 기반
  */
-import { SALESPERSONS, ALL_CUSTOMERS, ALL_PRODUCTS } from './foodDistributionData.js';
+import { SALESPERSONS, ALL_CUSTOMERS, ALL_PRODUCTS, PRODUCT_TYPES } from './foodDistributionData.js';
 
 // 1. 유틸리티 함수
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -37,6 +37,7 @@ export function generateStandardSalesData(year, month, targetAmount) {
             '영업사원명': sp.name,
             '거래처코드': customer.code,
             '거래처명': customer.name,
+            '품목유형': product.type,
             '품목코드': product.code,
             '품목명': product.name,
             '매출금액': amount,
@@ -68,13 +69,16 @@ export function generateTargetData(year, month, totalTarget) {
 
         const targetPerCustomer = spTarget / customersOfSp.length;
 
+        const types = Object.keys(PRODUCT_TYPES);
         customersOfSp.forEach(customer => {
+            const productType = types[Math.floor(Math.random() * types.length)];
             data.push({
                 '년도월': yearMonth,
                 '영업팀': sp.team,
                 '영업사원명': sp.name,
                 '거래처코드': customer.code,
                 '거래처명': customer.name,
+                '품목유형': productType,
                 '목표금액': Math.round(targetPerCustomer)
             });
         });

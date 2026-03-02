@@ -54,7 +54,7 @@ export function SettingsView({ masterData, setMasterData, setLastUpdated, select
                 >
                     {subView === 'bizDays' && <BusinessDaysSubView year={selectedYear} />}
                     {subView === 'org' && <OrganizationSubView setMasterData={setMasterData} masterData={masterData} />}
-                    {subView === 'types' && <TypesSubView />}
+                    {subView === 'types' && <TypesSubView setMasterData={setMasterData} masterData={masterData} />}
                     {subView === 'data' && <DataUploadSubView setMasterData={setMasterData} setLastUpdated={setLastUpdated} />}
                 </motion.div>
             </AnimatePresence>
@@ -524,7 +524,102 @@ function OrganizationSubView({ setMasterData, masterData }) {
 /**
  * 3. 유형명 설정
  */
-function TypesSubView() {
+function TypesSubView({ masterData, setMasterData }) {
+    const [types, setTypes] = useState([
+        { id: 'T01', name: '치즈' },
+        { id: 'T02', name: '소스' },
+        { id: 'T03', name: '피자' },
+        { id: 'T04', name: '빵크림' },
+        { id: 'T05', name: '이스트' },
+        { id: 'T06', name: '대소공장유탕류' },
+        { id: 'T07', name: '대소공장밀키트' },
+        { id: 'T08', name: '냉동감자' },
+        { id: 'T09', name: '해외소싱상품류' },
+        { id: 'T10', name: '국내소싱상품류' }
+    ]);
+    const [editingTypeId, setEditingTypeId] = useState(null);
+    const [typeEditName, setTypeEditName] = useState('');
+
+    useEffect(() => {
+        try {
+            const savedData = localStorage.getItem('dashboard_settings');
+            if (savedData) {
+                const parsed = JSON.parse(savedData);
+                if (parsed.types && Array.isArray(parsed.types) && parsed.types.length > 0) {
+                    setTypes(parsed.types);
+                }
+            }
+        } catch (e) {
+            console.error('Settings load failed', e);
+        }
+    }, []);
+
+    const saveChanges = (updatedTypes) => {
+        try {
+            const currentData = JSON.parse(localStorage.getItem('dashboard_settings') || '{}');
+            localStorage.setItem('dashboard_settings', JSON.stringify({
+                ...currentData,
+                types: updatedTypes
+            }));
+
+            // Sync engine config to re-trigger calculations using new set
+            if (masterData) {
+                setMasterData({ ...masterData });
+            }
+        } catch (e) {
+            console.error('Save failed', e);
+        }
+    };
+
+    const handleAddType = () => {
+        const newType = { id: `T${Date.now()}`, name: `새 유형${types.length + 1}` };
+        const updated = [...types, newType];
+        setTypes(updated);
+        saveChanges(updated);
+        setEditingTypeId(newType.id);
+        setTypeEditName(newType.name);
+    };
+
+    const handleDeleteType = (id) => {
+        if (!confirm('유형을 삭제하시겠습니까? 관련 데이터가 "기타"로 분류됩니다.')) return;
+        const updated = types.filter(t => t.id !== id);
+        setTypes(updated);
+        saveChanges(updated);
+    };
+
+    const handleSaveTypeEdit = (id) => {
+        if (!typeEditName.trim()) {
+            alert('이름을 입력해주세요.');
+            return;
+        }
+        const updated = types.map(t => t.id === id ? { ...t, name: typeEditName } : t);
+        setTypes(updated);
+        setEditingTypeId(null);
+        saveChanges(updated);
+    };
+
+    const handleMoveTypeUp = (e, index) => {
+        e.stopPropagation();
+        if (index === 0) return;
+        const updated = [...types];
+        const temp = updated[index - 1];
+        updated[index - 1] = updated[index];
+        updated[index] = temp;
+        setTypes(updated);
+        saveChanges(updated);
+    };
+
+    const handleMoveTypeDown = (e, index) => {
+        e.stopPropagation();
+        if (index === types.length - 1) return;
+        const updated = [...types];
+        const temp = updated[index + 1];
+        updated[index + 1] = updated[index];
+        updated[index] = temp;
+        setTypes(updated);
+        saveChanges(updated);
+    };
+
     return (
         <div className="bg-white rounded-[32px] border border-slate-200 p-8">
             <div className="flex items-center gap-4 mb-8">
@@ -532,24 +627,63 @@ function TypesSubView() {
                     <Type size={24} />
                 </div>
                 <div>
-                    <h3 className="text-xl font-black text-slate-800">카테고리 및 유형 정의</h3>
-                    <p className="text-sm text-slate-400 font-bold">제품 분류 및 실적 집계 기준 코드 관리</p>
+                    <h3 className="text-xl font-black text-slate-800">품목 유형 관리</h3>
+                    <p className="text-sm text-slate-400 font-bold flex items-center gap-1.5 mt-1">
+                        활성 제품 유형 구성 및 순서 설정 (미등록 품목은 '기타'로 합산)
+                        <span className="block mt-1 text-[12px] font-bold text-slate-400 tracking-tight flex items-center gap-1.5">
+                            <Info size={12} className="text-amber-500" /> 여기서 설정한 배치 순서에 따라 메인 대시보드(유형별)에도 순서대로 표시됩니다.
+                        </span>
+                    </p>
                 </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {['대분류', '중분류', '소분류'].map(level => (
-                    <div key={level} className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                        <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{level}</span>
-                        <div className="mt-4 space-y-2">
-                            {Array.from({ length: 3 }).map((_, i) => (
-                                <div key={i} className="px-4 py-2 bg-white rounded-lg text-xs font-bold text-slate-600 border border-slate-200 flex justify-between">
-                                    <span>분류 항목 {i + 1}</span>
-                                    <ArrowRight size={12} className="text-slate-300" />
+            <div className="max-w-3xl space-y-3">
+                {types.map((type, index) => (
+                    <div
+                        key={type.id || typeof type === 'string' ? type : `type-${index}`}
+                        className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-2xl border border-slate-100 shadow-sm bg-white"
+                    >
+                        <div className="flex items-center gap-3">
+                            {editingTypeId === type.id ? (
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        value={typeEditName}
+                                        onChange={(e) => setTypeEditName(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.stopPropagation();
+                                                handleSaveTypeEdit(type.id);
+                                            }
+                                        }}
+                                        className="px-3 py-1.5 border border-amber-200 rounded-lg text-sm font-black outline-none focus:ring-2 ring-amber-500/30"
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <button onClick={(e) => { e.stopPropagation(); handleSaveTypeEdit(type.id); }} className="text-xs bg-amber-500 text-white px-3 py-1.5 rounded-lg font-bold">확인</button>
                                 </div>
-                            ))}
+                            ) : (
+                                <span className="text-[15px] text-slate-800 font-extrabold">{type?.name || type}</span>
+                            )}
                         </div>
+                        {editingTypeId !== type.id && (
+                            <div className="flex items-center gap-2 mt-3 md:mt-0">
+                                <button onClick={(e) => { e.stopPropagation(); setTypeEditName(type.name); setEditingTypeId(type.id); }} className="text-[11px] font-bold px-3 py-1 rounded-md bg-slate-100 text-slate-500 hover:bg-amber-100 hover:text-amber-600">수정</button>
+                                <button onClick={(e) => { e.stopPropagation(); handleDeleteType(type.id); }} className="text-[11px] font-bold px-3 py-1 rounded-md bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600">삭제</button>
+                                <div className="flex items-center border border-slate-200 rounded-md ml-2 overflow-hidden bg-slate-50">
+                                    <button onClick={(e) => handleMoveTypeUp(e, index)} disabled={index === 0} className={`p-1.5 text-slate-400 hover:text-amber-500 hover:bg-white transition-colors border-r border-slate-200 ${index === 0 ? 'opacity-30 cursor-not-allowed' : ''}`} title="순서 위로 이동">
+                                        <ArrowUp size={14} strokeWidth={3} />
+                                    </button>
+                                    <button onClick={(e) => handleMoveTypeDown(e, index)} disabled={index === types.length - 1} className={`p-1.5 text-slate-400 hover:text-amber-500 hover:bg-white transition-colors ${index === types.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}`} title="순서 아래로 이동">
+                                        <ArrowDown size={14} strokeWidth={3} />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ))}
+                <button onClick={handleAddType} className="max-w-3xl w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-black hover:bg-slate-50 hover:border-amber-200 hover:text-amber-500 transition-all mt-4">
+                    + 새로운 유형 추가
+                </button>
             </div>
         </div>
     );

@@ -21,26 +21,33 @@ export const SETTINGS = {
 export class SalesBI {
     constructor(actualData, targetData, lastYearData = [], lastMonthData = []) {
         let registeredTeamNames = ['FD팀', 'FC팀', 'FR팀', 'FS팀', 'FL팀'];
+        let registeredTypeNames = ['치즈', '소스', '피자', '빵크림', '이스트', '대소공장유탕류', '대소공장밀키트', '냉동감자', '해외소싱상품류', '국내소싱상품류'];
         try {
             const savedData = localStorage.getItem('dashboard_settings');
             const settingsData = savedData ? JSON.parse(savedData) : {};
             if (settingsData.teams) {
                 registeredTeamNames = settingsData.teams.map(t => t.name);
             }
+            if (settingsData.types) {
+                registeredTypeNames = settingsData.types.map(t => t.name);
+            }
         } catch (e) { }
 
-        const mapTeam = (r) => {
+        const mapTeamAndType = (r) => {
             const t = r['영업팀'];
-            const mappedName = registeredTeamNames.includes(t) ? t : '기타';
-            return { ...r, '영업팀': mappedName };
+            const pt = r['품목유형'];
+            const mappedTeamName = registeredTeamNames.includes(t) ? t : '기타';
+            const mappedTypeName = registeredTypeNames.includes(pt) ? pt : '기타';
+            return { ...r, '영업팀': mappedTeamName, '품목유형': mappedTypeName };
         };
 
-        this.actual = actualData.map(mapTeam);
-        this.target = targetData.map(mapTeam);
-        this.lastYear = lastYearData.map(mapTeam);
-        this.lastMonth = lastMonthData.map(mapTeam);
+        this.actual = actualData.map(mapTeamAndType);
+        this.target = targetData.map(mapTeamAndType);
+        this.lastYear = lastYearData.map(mapTeamAndType);
+        this.lastMonth = lastMonthData.map(mapTeamAndType);
 
         this.registeredTeamNames = registeredTeamNames;
+        this.registeredTypeNames = registeredTypeNames;
     }
 
     /**
@@ -123,6 +130,8 @@ export class SalesBI {
 
         if (nextLevel === 'team') {
             return this.getAggregatedByTeam().map(d => this._mapMetric(d, metricType, mainTab, progressRate));
+        } else if (nextLevel === 'type') {
+            return this.getAggregatedByType().map(d => this._mapMetric(d, metricType, mainTab, progressRate));
         } else if (nextLevel === 'person') {
             return this.getAggregatedBySalesperson(id).map(d => this._mapMetric(d, metricType, mainTab, progressRate));
         } else if (nextLevel === 'customer') {
@@ -226,6 +235,61 @@ export class SalesBI {
     }
 
     /**
+     * 유형별 데이터 집계
+     */
+    getAggregatedByType() {
+        const types = [...new Set(this.target.map(r => r['품목유형']))];
+        const progressRate = (SETTINGS.currentBusinessDay / (SETTINGS.businessDays['2026-02'] || 20)) * 100;
+
+        return types.map(typeName => {
+            const typeActual = this.actual.filter(r => r['품목유형'] === typeName);
+            const typeTarget = this.target.filter(r => r['품목유형'] === typeName);
+            const typeLastYear = this.lastYear.filter(r => r['품목유형'] === typeName);
+            const typeLastMonth = this.lastMonth.filter(r => r['품목유형'] === typeName);
+
+            const actualAmt = typeActual.reduce((sum, r) => sum + r['매출금액'], 0);
+            const targetAmt = typeTarget.reduce((sum, r) => sum + r['목표금액'], 0);
+            const lastYearAmt = typeLastYear.reduce((sum, r) => sum + r['매출금액'], 0);
+            const lastMonthAmt = typeLastMonth.reduce((sum, r) => sum + r['매출금액'], 0);
+
+            const weight = typeActual.reduce((sum, r) => sum + (r['중량(KG)'] || 0), 0);
+            const lastYearWeight = typeLastYear.reduce((sum, r) => sum + (r['중량(KG)'] || 0), 0);
+            const lastMonthWeight = typeLastMonth.reduce((sum, r) => sum + (r['중량(KG)'] || 0), 0);
+
+            const achievement = targetAmt > 0 ? (actualAmt / targetAmt) * 100 : 0;
+
+            return {
+                id: typeName,
+                name: typeName,
+                actual: actualAmt,
+                target: targetAmt,
+                weight,
+                lastYearWeight,
+                lastMonthWeight,
+                achievement,
+                progressGap: achievement - progressRate,
+                lastYear: lastYearAmt,
+                yoy: lastYearAmt > 0 ? ((actualAmt - lastYearAmt) / lastYearAmt) * 100 : 0,
+                lastMonth: lastMonthAmt,
+                mom: lastMonthAmt > 0 ? ((actualAmt - lastMonthAmt) / lastMonthAmt) * 100 : 0,
+                cumulativeTarget: targetAmt * 2.0,
+                cumulativeActual: actualAmt * 1.8,
+                cumulativeWeight: weight * 1.8,
+                forecast: (actualAmt / SETTINGS.currentBusinessDay) * (SETTINGS.businessDays['2026-02'] || 20),
+                forecastWeight: (weight / SETTINGS.currentBusinessDay) * (SETTINGS.businessDays['2026-02'] || 20)
+            };
+        }).sort((a, b) => {
+            const aIdx = this.registeredTypeNames.indexOf(a.name);
+            const bIdx = this.registeredTypeNames.indexOf(b.name);
+            if (aIdx >= 0 && bIdx >= 0) return aIdx - bIdx;
+            if (aIdx >= 0) return -1;
+            if (bIdx >= 0) return 1;
+            return b.actual - a.actual;
+        });
+    }
+
+    /**
+
      * 사원별 데이터 집계 (2단계)
      */
     getAggregatedBySalesperson(teamName) {

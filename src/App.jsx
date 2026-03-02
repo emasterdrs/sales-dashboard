@@ -65,6 +65,11 @@ const TEAM_COLORS = {
     '전체': { main: '#3b82f6', grad: 'from-blue-600 to-indigo-500' }
 };
 
+const CHART_COLORS = [
+    '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+    '#0ea5e9', '#d946ef', '#f97316', '#14b8a6', '#64748b'
+];
+
 // 통화/중량 단위 설정
 const CURRENCY_UNITS = [
     { key: '100M', label: '억원', divisor: 100000000, suffix: '억' },
@@ -118,7 +123,7 @@ function CompactStat({ title, value, detail, icon: Icon, color, trend }) {
 
 export default function App() {
     const [selectedMonth, setSelectedMonth] = useState('2026-02');
-    const [view, setView] = useState('dashboard');
+    const [view, setView] = useState('dashboard_team');
     const [mainTab, setMainTab] = useState('current');
     const [analysisMode, setAnalysisMode] = useState('goal'); // goal, yoy, mom, cumulative, forecast
     const [metricType, setMetricType] = useState('amount');
@@ -135,6 +140,10 @@ export default function App() {
     const [showLogin, setShowLogin] = useState(false);
     const [loginId, setLoginId] = useState('');
     const [loginPw, setLoginPw] = useState('');
+
+    useEffect(() => {
+        setPath([{ level: view === 'dashboard_type' ? 'type' : 'root', id: 'all', name: '전체' }]);
+    }, [view]);
 
     const handleSettingsClick = () => {
         if (isAdmin) setView('settings');
@@ -212,7 +221,7 @@ export default function App() {
     }, [bi, selectedMonth, currentView, mainTab, metricType]);
 
     const drillDownData = useMemo(() => {
-        const nextLevelMap = { root: 'team', team: 'person', person: 'person' };
+        const nextLevelMap = view === 'dashboard_type' ? { root: 'type', type: 'type' } : { root: 'team', team: 'person', person: 'person' };
         const nextLevel = nextLevelMap[currentView.level];
         const data = bi.getDrillDown(selectedMonth, currentView.level, currentView.id, nextLevel, mainTab, metricType);
 
@@ -235,8 +244,8 @@ export default function App() {
     }, [path, bi, selectedMonth, currentView, mainTab, metricType]);
 
     const handleDrillDown = (item) => {
-        if (currentView.level === 'person') return;
-        const nextLevelMap = { root: 'team', team: 'person' };
+        if (currentView.level === 'person' || currentView.level === 'type') return; // If we want drilldown for type, we can add it later. For now, stop at 'type' level similarly to 'person'. Wait, type currently has no drilldown.
+        const nextLevelMap = view === 'dashboard_type' ? { root: 'type' } : { root: 'team', team: 'person' };
         setPath([...path, { level: nextLevelMap[currentView.level], id: item.id || item.name, name: item.name }]);
     };
 
@@ -272,7 +281,8 @@ export default function App() {
 
                 <nav className="flex-1">
                     <div className="space-y-2">
-                        <SidebarIcon active={view === 'dashboard'} icon={BarChart3} label="매출 실적" onClick={() => setView('dashboard')} />
+                        <SidebarIcon active={view === 'dashboard_team'} icon={BarChart3} label="매출 실적 (팀별)" onClick={() => setView('dashboard_team')} />
+                        <SidebarIcon active={view === 'dashboard_type'} icon={PieChartIcon} label="매출 실적 (유형별)" onClick={() => setView('dashboard_type')} />
                         <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={handleSettingsClick} />
 
                         <AnimatePresence>
@@ -464,7 +474,7 @@ export default function App() {
                                                     <thead className="sticky top-0 z-10 bg-slate-50 border-b-2 border-slate-200">
                                                         <tr className="text-slate-700 font-extrabold text-[13px] md:text-[14px] uppercase tracking-tighter align-middle">
                                                             <th className="py-3.5 px-6 w-[20%] text-left">
-                                                                {path.length === 1 ? '영업팀' :
+                                                                {path.length === 1 ? (view === 'dashboard_type' ? '유형명' : '영업팀') :
                                                                     path.length === 2 ? '영업사원' :
                                                                         path.length === 3 ? '거래처' : '품목'}
                                                             </th>
@@ -479,7 +489,7 @@ export default function App() {
                                                         {drillDownData.map((item, i) => (
                                                             <tr key={i} onClick={() => handleDrillDown(item)} className="hover:bg-slate-50 transition-colors cursor-pointer group">
                                                                 <td className="py-4 px-6 font-black text-slate-800 text-[15px] group-hover:text-indigo-600 transition-colors tracking-tight truncate align-middle">
-                                                                    <span className="inline-block w-2 h-5 rounded-full mr-3 align-middle" style={{ background: TEAM_COLORS[item.name]?.main || '#e2e8f0' }} />
+                                                                    <span className="inline-block w-2 h-5 rounded-full mr-3 align-middle" style={{ background: TEAM_COLORS[item.name]?.main || CHART_COLORS[i % CHART_COLORS.length] }} />
                                                                     {item.name}
                                                                 </td>
                                                                 <td className="py-4 px-2 font-mono text-slate-500 text-right text-[15px] font-bold align-middle">{fCurrencyNoSuffix(item.target)}</td>
@@ -541,7 +551,7 @@ export default function App() {
 
                                                         <Bar dataKey="achievement" radius={[10, 10, 0, 0]} barSize={40}>
                                                             {drillDownData.map((e, i) => (
-                                                                <Cell key={i} fill={TEAM_COLORS[e.name]?.main || TEAM_COLORS['전체'].main} opacity={0.8} />
+                                                                <Cell key={i} fill={TEAM_COLORS[e.name]?.main || CHART_COLORS[i % CHART_COLORS.length]} opacity={0.8} />
                                                             ))}
                                                             <LabelList dataKey="achievement" position="top" formatter={(v) => `${v.toFixed(1)}%`} fontSize={13} fontWeight={900} fill="#475569" />
                                                         </Bar>
@@ -553,12 +563,54 @@ export default function App() {
                                 </div>
 
                             </div>
+
+                            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                                {/* Pie Chart for Composition Ratio - Full Width below or next to the bar chart */}
+                                <div className="xl:col-span-4 bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm flex flex-col mt-4">
+                                    <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                                        <h3 className="text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                            <PieChartIcon size={18} className="text-indigo-600" />
+                                            {view === 'dashboard_type' ? '유형별 구성비' : '팀별 구성비'}
+                                        </h3>
+                                    </div>
+                                    <div className="p-4 flex-1 min-h-[400px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={drillDownData.filter(d => d.actual > 0)}
+                                                    dataKey="actual"
+                                                    nameKey="name"
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={80}
+                                                    outerRadius={120}
+                                                    paddingAngle={5}
+                                                >
+                                                    {drillDownData.filter(d => d.actual > 0).map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={TEAM_COLORS[entry.name]?.main || CHART_COLORS[index % CHART_COLORS.length]} />
+                                                    ))}
+                                                    <LabelList dataKey="name" position="outside" offset={20} stroke="none" fill="#475569" fontSize={13} fontWeight="bold" />
+                                                </Pie>
+                                                <Tooltip
+                                                    formatter={(value, name, props) => {
+                                                        const total = drillDownData.reduce((acc, curr) => acc + curr.actual, 0);
+                                                        const percent = ((value / total) * 100).toFixed(1);
+                                                        return [`${fCurrencyNoSuffix(value)} (${percent}%)`, name];
+                                                    }}
+                                                    contentStyle={{ borderRadius: '12px', fontSize: '13px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                                />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </main>
 
                 <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[85%] bg-white/95 backdrop-blur-3xl border border-slate-200 rounded-[24px] p-2.5 flex items-center justify-around shadow-2xl z-50 ring-1 ring-slate-900/5">
-                    <SidebarIcon active={view === 'dashboard'} icon={BarChart3} label="매출 실적" onClick={() => setView('dashboard')} color="indigo" />
+                    <SidebarIcon active={view === 'dashboard_team'} icon={BarChart3} label="팀별 실적" onClick={() => setView('dashboard_team')} color="indigo" />
+                    <SidebarIcon active={view === 'dashboard_type'} icon={PieChartIcon} label="유형별 실적" onClick={() => setView('dashboard_type')} color="indigo" />
                     <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={handleSettingsClick} color="slate" />
                 </nav>
             </div>
