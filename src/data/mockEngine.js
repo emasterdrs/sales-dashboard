@@ -9,6 +9,7 @@ import { SALESPERSONS } from './foodDistributionData.js';
  */
 export const SETTINGS = {
     businessDays: {
+        '2026-01': 22, // 1월 영업일수
         '2026-02': 17, // 2월 영업일수
     },
     currentBusinessDay: 9, // 현재 9일차라고 가정
