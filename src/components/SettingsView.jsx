@@ -3,7 +3,7 @@ import {
     Settings, Calendar as CalendarIcon, Users, Package, Building2,
     Filter, Upload, ChevronRight, Save, Target, Type, Globe,
     Info, CheckCircle2, AlertCircle, ChevronDown, CalendarDays,
-    ArrowRight
+    ArrowRight, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { SETTINGS } from '../data/mockEngine';
 import { calculateBusinessDays, calculateCurrentBusinessDay, getYearlyCalendarData } from '../lib/dateUtils';
@@ -371,6 +371,28 @@ function OrganizationSubView({ setMasterData, masterData }) {
         saveChanges(teams, updated);
     };
 
+    const handleMoveTeamUp = (e, index) => {
+        e.stopPropagation();
+        if (index === 0) return;
+        const updated = [...teams];
+        const temp = updated[index - 1];
+        updated[index - 1] = updated[index];
+        updated[index] = temp;
+        setTeams(updated);
+        saveChanges(updated, salespersons);
+    };
+
+    const handleMoveTeamDown = (e, index) => {
+        e.stopPropagation();
+        if (index === teams.length - 1) return;
+        const updated = [...teams];
+        const temp = updated[index + 1];
+        updated[index + 1] = updated[index];
+        updated[index] = temp;
+        setTeams(updated);
+        saveChanges(updated, salespersons);
+    };
+
     const handleSaveSpEdit = (id) => {
         const updated = salespersons.map(s => s.id === id ? { ...s, name: spEditName } : s);
         setSalespersons(updated);
@@ -384,15 +406,20 @@ function OrganizationSubView({ setMasterData, masterData }) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <SettingCard title="영업팀 관리" icon={Users} desc="활성 영업팀 및 조직 체계 구성 (미등록 팀 데이터는 '기타'로 합산)">
                 <div className="space-y-3">
-                    {teams.map(team => (
+                    {teams.map((team, index) => (
                         <div
                             key={team.id || typeof team === 'string' ? team : `team-${Math.random()}`}
                             className={`flex flex-col md:flex-row md:items-center justify-between p-4 cursor-pointer rounded-2xl border shadow-sm transition-all ${selectedTeam === team.id ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-500/20' : 'bg-white border-slate-100'}`}
                             onClick={() => setSelectedTeam(team.id)}
                         >
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-500 font-black shrink-0">
-                                    {team?.name?.[0] || (typeof team === 'string' ? team[0] : '?')}
+                                <div className="flex flex-col gap-0.5 mr-2">
+                                    <button onClick={(e) => handleMoveTeamUp(e, index)} disabled={index === 0} className={`p-0.5 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors ${index === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}>
+                                        <ArrowUp size={14} strokeWidth={3} />
+                                    </button>
+                                    <button onClick={(e) => handleMoveTeamDown(e, index)} disabled={index === teams.length - 1} className={`p-0.5 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors ${index === teams.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}`}>
+                                        <ArrowDown size={14} strokeWidth={3} />
+                                    </button>
                                 </div>
                                 {editingTeamId === team.id ? (
                                     <div className="flex items-center gap-2">
@@ -407,7 +434,7 @@ function OrganizationSubView({ setMasterData, masterData }) {
                                         <button onClick={(e) => { e.stopPropagation(); handleSaveTeamEdit(team.id); }} className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold">확인</button>
                                     </div>
                                 ) : (
-                                    <span className="text-sm text-slate-800 font-black">{team?.name || (typeof team === 'string' ? team : '알 수 없는 팀')}</span>
+                                    <span className="text-[15px] text-slate-800 font-extrabold">{team?.name || (typeof team === 'string' ? team : '알 수 없는 팀')}</span>
                                 )}
                             </div>
                             {editingTeamId !== team.id && (

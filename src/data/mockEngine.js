@@ -39,6 +39,8 @@ export class SalesBI {
         this.target = targetData.map(mapTeam);
         this.lastYear = lastYearData.map(mapTeam);
         this.lastMonth = lastMonthData.map(mapTeam);
+
+        this.registeredTeamNames = registeredTeamNames;
     }
 
     /**
@@ -213,7 +215,14 @@ export class SalesBI {
                 forecast: (actualAmt / SETTINGS.currentBusinessDay) * (SETTINGS.businessDays['2026-02'] || 20),
                 forecastWeight: (weight / SETTINGS.currentBusinessDay) * (SETTINGS.businessDays['2026-02'] || 20)
             };
-        }).sort((a, b) => b.actual - a.actual);
+        }).sort((a, b) => {
+            const aIdx = this.registeredTeamNames.indexOf(a.name);
+            const bIdx = this.registeredTeamNames.indexOf(b.name);
+            if (aIdx >= 0 && bIdx >= 0) return aIdx - bIdx;
+            if (aIdx >= 0) return -1;
+            if (bIdx >= 0) return 1;
+            return b.actual - a.actual;
+        });
     }
 
     /**
