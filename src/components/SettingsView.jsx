@@ -66,12 +66,42 @@ export function SettingsView({ setMasterData, setLastUpdated, selectedMonth, sub
  * 1. 영업일수 상세 설정 (달력형)
  */
 function BusinessDaysSubView({ year }) {
-    const calendarData = useMemo(() => getYearlyCalendarData(year), [year]);
+    const calendarDataRaw = useMemo(() => getYearlyCalendarData(year), [year]);
     const [editingMonth, setEditingMonth] = useState(null);
     const [holidayNames, setHolidayNames] = useState({});
+    const [toggledDays, setToggledDays] = useState({});
+
+    const calendarData = useMemo(() => {
+        return calendarDataRaw.map(m => ({
+            ...m,
+            days: m.days.map(d => {
+                const isToggled = toggledDays[d.date] !== undefined;
+                let isBusinessDay = d.isBusinessDay;
+                let isHoliday = d.isHoliday;
+                let currentName = holidayNames[d.date] !== undefined ? holidayNames[d.date] : d.holidayName;
+
+                if (isToggled) {
+                    isBusinessDay = toggledDays[d.date];
+                    isHoliday = !isBusinessDay && !d.isWeekend;
+                    if (!isBusinessDay && !currentName && !d.isWeekend) {
+                        currentName = '임시 지정 휴일';
+                    }
+                }
+
+                return { ...d, isBusinessDay, isHoliday, holidayName: currentName };
+            })
+        }));
+    }, [calendarDataRaw, toggledDays, holidayNames]);
 
     const handleNameChange = (date, name) => {
         setHolidayNames(prev => ({ ...prev, [date]: name }));
+    };
+
+    const handleDayToggle = (date, currentIsBusinessDay) => {
+        setToggledDays(prev => ({ ...prev, [date]: !currentIsBusinessDay }));
+        if (currentIsBusinessDay && !holidayNames[date]) {
+            setHolidayNames(prev => ({ ...prev, [date]: '임시 지정 휴일' }));
+        }
     };
 
     return (
@@ -112,7 +142,7 @@ function BusinessDaysSubView({ year }) {
 
             {calendarData.map(({ month, days }) => {
                 const totalBizDays = days.filter(d => d.isBusinessDay).length;
-                const holidays = days.filter(d => d.isHoliday || (d.isWeekend && d.holidayName));
+                const holidays = days.filter(d => !d.isBusinessDay && (d.isHoliday || d.isWeekend));
                 const isEditing = editingMonth === month;
 
                 return (
@@ -147,19 +177,21 @@ function BusinessDaysSubView({ year }) {
                                         <div key={`empty-${i}`} />
                                     ))}
                                     {days.map(d => {
-                                        const displayName = holidayNames[d.date] || d.holidayName;
+                                        const displayName = holidayNames[d.date] !== undefined ? holidayNames[d.date] : d.holidayName;
                                         return (
                                             <div
                                                 key={d.date}
+                                                onClick={() => isEditing && handleDayToggle(d.date, d.isBusinessDay)}
                                                 className={`
                                                     relative h-16 rounded-xl flex flex-col items-center justify-center border transition-all
                                                     ${d.isBusinessDay ? 'bg-white border-transparent hover:border-indigo-200 hover:bg-indigo-50/30' :
                                                         d.isHoliday ? 'bg-rose-50 border-rose-100 text-rose-600' :
                                                             'bg-slate-50 border-slate-100 text-slate-400'}
+                                                    ${isEditing ? 'cursor-pointer hover:border-indigo-400 hover:shadow-md' : ''}
                                                 `}
                                             >
                                                 <span className="text-sm font-black">{d.day}</span>
-                                                {displayName && <span className="text-[8px] font-bold mt-1 text-center truncate px-1">{displayName}</span>}
+                                                {displayName && !d.isBusinessDay && <span className="text-[8px] font-bold mt-1 text-center truncate px-1">{displayName}</span>}
                                                 {d.isBusinessDay && <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-400" />}
                                             </div>
                                         );
@@ -194,13 +226,13 @@ function BusinessDaysSubView({ year }) {
                                                 {isEditing ? (
                                                     <input
                                                         type="text"
-                                                        value={holidayNames[h.date] || h.holidayName || ''}
+                                                        value={holidayNames[h.date] !== undefined ? holidayNames[h.date] : (h.holidayName || '')}
                                                         onChange={(e) => handleNameChange(h.date, e.target.value)}
                                                         className="w-full text-xs font-black text-slate-700 bg-indigo-50 border border-indigo-100 rounded-md px-2 py-1 outline-none"
                                                         placeholder="제외 사유 입력"
                                                     />
                                                 ) : (
-                                                    <span className="text-xs font-black text-slate-700">{holidayNames[h.date] || h.holidayName}</span>
+                                                    <span className="text-xs font-black text-slate-700">{holidayNames[h.date] !== undefined ? holidayNames[h.date] : h.holidayName}</span>
                                                 )}
                                             </div>
                                             {!isEditing && <span className="text-[10px] text-slate-300 font-bold shrink-0">{h.date}</span>}
