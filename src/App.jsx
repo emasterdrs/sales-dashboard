@@ -141,26 +141,21 @@ export default function App() {
         else setShowLogin(true);
     };
 
-    const handleLogin = async (e) => {
+    const handleLogin = (e) => {
         e.preventDefault();
         try {
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: loginId, password: loginPw })
-            });
-            const result = await res.json();
-            if (result.success) {
+            // Local login logic without backend API
+            if (loginId === 'admin' && loginPw === 'admin1234') {
                 setIsAdmin(true);
                 setShowLogin(false);
                 setLoginId('');
                 setLoginPw('');
                 setView('settings');
             } else {
-                alert(result.message || '로그인 실패');
+                alert('아이디 또는 비밀번호가 올바르지 않습니다.');
             }
         } catch (error) {
-            alert('인터넷 연결 또는 서버 연결에 실패했습니다.');
+            alert('로그인 처리 중 오류가 발생했습니다.');
         }
     };
 

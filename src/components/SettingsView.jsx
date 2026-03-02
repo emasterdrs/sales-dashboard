@@ -71,37 +71,32 @@ function BusinessDaysSubView({ year }) {
     const [holidayNames, setHolidayNames] = useState({});
     const [toggledDays, setToggledDays] = useState({});
 
-    // API에서 초기 데이터를 로드
+    // 브라우저 저장소(localStorage)에서 데이터 로드
     useEffect(() => {
-        const loadData = async () => {
-            try {
-                const res = await fetch('/api/settings');
-                const data = await res.json();
-                setHolidayNames(data[`holidayNames_${year}`] || {});
-                setToggledDays(data[`toggledDays_${year}`] || {});
-            } catch (e) {
-                console.warn('Backend API connection failed, local mode fallback', e);
-            }
-        };
-        loadData();
+        try {
+            const savedData = localStorage.getItem('dashboard_settings');
+            const data = savedData ? JSON.parse(savedData) : {};
+            setHolidayNames(data[`holidayNames_${year}`] || {});
+            setToggledDays(data[`toggledDays_${year}`] || {});
+        } catch (e) {
+            console.warn('Failed to load from localStorage', e);
+        }
     }, [year]);
 
-    const toggleEditAndSave = async (month, isCurrentlyEditing) => {
+    const toggleEditAndSave = (month, isCurrentlyEditing) => {
         if (isCurrentlyEditing) {
-            // 저장 처리
+            // 로컬 스토리지에 저장 처리
             try {
-                await fetch('/api/settings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ key: `holidayNames_${year}`, value: holidayNames })
-                });
-                await fetch('/api/settings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ key: `toggledDays_${year}`, value: toggledDays })
-                });
+                const savedData = localStorage.getItem('dashboard_settings');
+                let data = savedData ? JSON.parse(savedData) : {};
+
+                data[`holidayNames_${year}`] = holidayNames;
+                data[`toggledDays_${year}`] = toggledDays;
+
+                localStorage.setItem('dashboard_settings', JSON.stringify(data));
             } catch (e) {
-                console.warn('Backend save failed');
+                console.warn('Failed to save to localStorage', e);
+                alert('설정 저장 중 오류가 발생했습니다.');
             }
             setEditingMonth(null);
         } else {

@@ -5,7 +5,7 @@
   "type": "module",
   "homepage": "https://emasterdrs.github.io/sales-dashboard/",
   "scripts": {
-    "dev": "concurrently \"node server.js\" \"vite\"",
+    "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
