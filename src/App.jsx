@@ -295,24 +295,7 @@ export default function App() {
     const drillDownData = useMemo(() => {
         const nextLevelMap = view === 'dashboard_type' ? { root: 'type', type: 'type' } : { root: 'team', team: 'person', person: 'person' };
         const nextLevel = nextLevelMap[currentView.level];
-        const data = bi.getDrillDown(selectedMonth, currentView.level, currentView.id, nextLevel, mainTab, metricType);
-
-        return data.map(item => {
-            const achievement = (item.actual / (item.target || 1)) * 100;
-            const lastYearActual = item.lastYear || 0;
-            const yoy = lastYearActual ? ((item.actual - lastYearActual) / lastYearActual) * 100 : 0;
-            const lastMonthActual = item.lastMonth || 0;
-            const mom = lastMonthActual ? ((item.actual - lastMonthActual) / lastMonthActual) * 100 : 0;
-
-            return {
-                ...item,
-                achievement,
-                yoy,
-                mom,
-                progressRate: (SETTINGS.currentBusinessDay / (SETTINGS.businessDays[selectedMonth] || 20)) * 100,
-                progressGap: achievement - ((SETTINGS.currentBusinessDay / (SETTINGS.businessDays[selectedMonth] || 20)) * 100)
-            };
-        });
+        return bi.getDrillDown(selectedMonth, currentView.level, currentView.id, nextLevel, mainTab, metricType);
     }, [path, bi, selectedMonth, currentView, mainTab, metricType]);
 
     const handleDrillDown = (item) => {
@@ -610,11 +593,39 @@ export default function App() {
                                                                     path.length === 2 ? '영업사원' :
                                                                         path.length === 3 ? '거래처' : '품목'}
                                                             </th>
-                                                            <th className="py-3.5 px-2 text-right w-[15%]">목표</th>
-                                                            <th className="py-3.5 px-2 text-right w-[15%]">실적</th>
-                                                            <th className="py-3.5 px-2 text-center w-[15%]">달성율(%)</th>
-                                                            <th className="py-3.5 px-2 text-center w-[15%]">과부족(%)</th>
-                                                            <th className="py-3.5 pr-6 text-right w-[20%]">과부족({metricType === 'amount' ? '금액' : '수량'})</th>
+                                                            {analysisMode === 'goal' && (
+                                                                <>
+                                                                    <th className="py-3.5 px-2 text-right w-[15%]">목표</th>
+                                                                    <th className="py-3.5 px-2 text-right w-[15%]">실적</th>
+                                                                    <th className="py-3.5 px-2 text-center w-[15%]">달성율(%)</th>
+                                                                    <th className="py-3.5 px-2 text-center w-[15%]">과부족(%)</th>
+                                                                    <th className="py-3.5 pr-6 text-right w-[20%]">과부족({metricType === 'amount' ? '금액' : '수량'})</th>
+                                                                </>
+                                                            )}
+                                                            {analysisMode === 'yoy' && (
+                                                                <>
+                                                                    <th className="py-3.5 px-2 text-right w-[20%]">실적</th>
+                                                                    <th className="py-3.5 px-2 text-right w-[20%]">전년실적</th>
+                                                                    <th className="py-3.5 px-2 text-center w-[20%]">성장률(%)</th>
+                                                                    <th className="py-3.5 pr-6 text-right w-[20%]">증감액</th>
+                                                                </>
+                                                            )}
+                                                            {analysisMode === 'mom' && (
+                                                                <>
+                                                                    <th className="py-3.5 px-2 text-right w-[20%]">실적</th>
+                                                                    <th className="py-3.5 px-2 text-right w-[20%]">전월실적</th>
+                                                                    <th className="py-3.5 px-2 text-center w-[20%]">성장률(%)</th>
+                                                                    <th className="py-3.5 pr-6 text-right w-[20%]">증감액</th>
+                                                                </>
+                                                            )}
+                                                            {analysisMode === 'cumulative' && (
+                                                                <>
+                                                                    <th className="py-3.5 px-2 text-right w-[20%]">누계목표</th>
+                                                                    <th className="py-3.5 px-2 text-right w-[20%]">누계실적</th>
+                                                                    <th className="py-3.5 px-2 text-center w-[20%]">달성율(%)</th>
+                                                                    <th className="py-3.5 pr-6 text-right w-[20%]">과부족</th>
+                                                                </>
+                                                            )}
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-100">
@@ -624,38 +635,110 @@ export default function App() {
                                                                     <span className="inline-block w-2 h-5 rounded-full mr-3 align-middle" style={{ background: TEAM_COLORS[item.name]?.main || CHART_COLORS[i % CHART_COLORS.length] }} />
                                                                     {item.name}
                                                                 </td>
-                                                                <td className="py-4 px-2 font-mono text-slate-500 text-right text-[15px] font-bold align-middle">{fCurrencyNoSuffix(item.target)}</td>
-                                                                <td className="py-4 px-2 font-mono text-slate-800 text-right text-[15px] font-extrabold align-middle">{fCurrencyNoSuffix(item.actual)}</td>
-                                                                <td className="py-4 px-2 text-center align-middle">
-                                                                    <span className="font-extrabold text-slate-900 text-[15px] block">{fPercent(item.achievement)}</span>
-                                                                </td>
-                                                                <td className="py-4 px-2 text-center align-middle">
-                                                                    <span className={`font-extrabold text-[15px] ${item.progressGap >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
-                                                                        {item.progressGap > 0 ? '+' : ''}{item.progressGap.toFixed(1)}%
-                                                                    </span>
-                                                                </td>
-                                                                <td className={`py-4 pr-6 font-mono text-right font-extrabold text-[15px] align-middle ${item.overShort >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
-                                                                    {item.overShort > 0 ? `+${fCurrencyNoSuffix(item.overShort)}` : fCurrencyNoSuffix(item.overShort)}
-                                                                </td>
+                                                                {analysisMode === 'goal' && (
+                                                                    <>
+                                                                        <td className="py-4 px-2 font-mono text-slate-500 text-right text-[15px] font-bold align-middle">{fCurrencyNoSuffix(item.target)}</td>
+                                                                        <td className="py-4 px-2 font-mono text-slate-800 text-right text-[15px] font-extrabold align-middle">{fCurrencyNoSuffix(item.actual)}</td>
+                                                                        <td className="py-4 px-2 text-center align-middle">
+                                                                            <span className="font-extrabold text-slate-900 text-[15px] block">{fPercent(item.achievement)}</span>
+                                                                        </td>
+                                                                        <td className="py-4 px-2 text-center align-middle">
+                                                                            <span className={`font-extrabold text-[15px] ${item.progressGap >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
+                                                                                {item.progressGap > 0 ? '+' : ''}{item.progressGap.toFixed(1)}%
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className={`py-4 pr-6 font-mono text-right font-extrabold text-[15px] align-middle ${item.overShort >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
+                                                                            {item.overShort > 0 ? `+${fCurrencyNoSuffix(item.overShort)}` : fCurrencyNoSuffix(item.overShort)}
+                                                                        </td>
+                                                                    </>
+                                                                )}
+                                                                {analysisMode === 'yoy' && (
+                                                                    <>
+                                                                        <td className="py-4 px-2 font-mono text-slate-800 text-right text-[15px] font-extrabold align-middle">{fCurrencyNoSuffix(item.actual)}</td>
+                                                                        <td className="py-4 px-2 font-mono text-slate-500 text-right text-[15px] font-bold align-middle">{fCurrencyNoSuffix(item.lastYear)}</td>
+                                                                        <td className="py-4 px-2 text-center align-middle">
+                                                                            <span className={`font-extrabold text-[15px] ${item.yoy >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>{fPercent(item.yoy)}</span>
+                                                                        </td>
+                                                                        <td className={`py-4 pr-6 font-mono text-right font-extrabold text-[15px] align-middle ${item.actual - item.lastYear >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
+                                                                            {fCurrencyNoSuffix(item.actual - item.lastYear)}
+                                                                        </td>
+                                                                    </>
+                                                                )}
+                                                                {analysisMode === 'mom' && (
+                                                                    <>
+                                                                        <td className="py-4 px-2 font-mono text-slate-800 text-right text-[15px] font-extrabold align-middle">{fCurrencyNoSuffix(item.actual)}</td>
+                                                                        <td className="py-4 px-2 font-mono text-slate-500 text-right text-[15px] font-bold align-middle">{fCurrencyNoSuffix(item.lastMonth)}</td>
+                                                                        <td className="py-4 px-2 text-center align-middle">
+                                                                            <span className={`font-extrabold text-[15px] ${item.mom >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>{fPercent(item.mom)}</span>
+                                                                        </td>
+                                                                        <td className={`py-4 pr-6 font-mono text-right font-extrabold text-[15px] align-middle ${item.actual - item.lastMonth >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
+                                                                            {fCurrencyNoSuffix(item.actual - item.lastMonth)}
+                                                                        </td>
+                                                                    </>
+                                                                )}
+                                                                {analysisMode === 'cumulative' && (
+                                                                    <>
+                                                                        <td className="py-4 px-2 font-mono text-slate-500 text-right text-[15px] font-bold align-middle">{fCurrencyNoSuffix(item.cumulativeTarget)}</td>
+                                                                        <td className="py-4 px-2 font-mono text-slate-800 text-right text-[15px] font-extrabold align-middle">{fCurrencyNoSuffix(item.cumulativeActual)}</td>
+                                                                        <td className="py-4 px-2 text-center align-middle">
+                                                                            <span className="font-extrabold text-slate-900 text-[15px]">{fPercent(item.cumulativeAchievement)}</span>
+                                                                        </td>
+                                                                        <td className={`py-4 pr-6 font-mono text-right font-extrabold text-[15px] align-middle ${item.cumulativeActual - item.cumulativeTarget >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
+                                                                            {fCurrencyNoSuffix(item.cumulativeActual - item.cumulativeTarget)}
+                                                                        </td>
+                                                                    </>
+                                                                )}
                                                             </tr>
                                                         ))}
                                                     </tbody>
                                                     <tfoot className="bg-slate-50/80 border-t-2 border-slate-200">
                                                         <tr className="font-extrabold text-[15px] md:text-[16px]">
                                                             <td className="py-4 px-6 text-slate-900 uppercase tracking-tight align-middle">합계</td>
-                                                            <td className="py-4 px-2 font-mono text-slate-600 text-right align-middle">{fCurrencyNoSuffix(summary.target)}</td>
-                                                            <td className="py-4 px-2 font-mono text-slate-900 text-right align-middle">{fCurrencyNoSuffix(summary.actual)}</td>
-                                                            <td className="py-4 px-2 text-center align-middle">
-                                                                <span className="text-slate-900 tracking-tighter">{fPercent(summary.achievementRate)}</span>
-                                                            </td>
-                                                            <td className="py-4 px-2 text-center align-middle">
-                                                                <span className={`tracking-tighter ${summary.progressGap >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
-                                                                    {summary.progressGap > 0 ? '+' : ''}{summary.progressGap.toFixed(1)}%
-                                                                </span>
-                                                            </td>
-                                                            <td className={`py-4 pr-6 font-mono text-right align-middle ${summary.overShort >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
-                                                                {summary.overShort > 0 ? `+${fCurrencyNoSuffix(summary.overShort)}` : fCurrencyNoSuffix(summary.overShort)}
-                                                            </td>
+                                                            {analysisMode === 'goal' && (
+                                                                <>
+                                                                    <td className="py-4 px-2 font-mono text-slate-600 text-right align-middle">{fCurrencyNoSuffix(summary.target)}</td>
+                                                                    <td className="py-4 px-2 font-mono text-slate-900 text-right align-middle">{fCurrencyNoSuffix(summary.actual)}</td>
+                                                                    <td className="py-4 px-2 text-center align-middle"><span className="text-slate-900 tracking-tighter">{fPercent(summary.achievementRate)}</span></td>
+                                                                    <td className="py-4 px-2 text-center align-middle">
+                                                                        <span className={`tracking-tighter ${summary.progressGap >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
+                                                                            {summary.progressGap > 0 ? '+' : ''}{summary.progressGap.toFixed(1)}%
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className={`py-4 pr-6 font-mono text-right align-middle ${summary.overShort >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
+                                                                        {summary.overShort > 0 ? `+${fCurrencyNoSuffix(summary.overShort)}` : fCurrencyNoSuffix(summary.overShort)}
+                                                                    </td>
+                                                                </>
+                                                            )}
+                                                            {analysisMode === 'yoy' && (
+                                                                <>
+                                                                    <td className="py-4 px-2 font-mono text-slate-900 text-right align-middle">{fCurrencyNoSuffix(summary.actual)}</td>
+                                                                    <td className="py-4 px-2 font-mono text-slate-600 text-right align-middle">{fCurrencyNoSuffix(summary.lastYearActual)}</td>
+                                                                    <td className="py-4 px-2 text-center align-middle"><span className={`tracking-tighter ${summary.yoyGrowth >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>{fPercent(summary.yoyGrowth)}</span></td>
+                                                                    <td className={`py-4 pr-6 font-mono text-right align-middle ${summary.actual - summary.lastYearActual >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
+                                                                        {fCurrencyNoSuffix(summary.actual - summary.lastYearActual)}
+                                                                    </td>
+                                                                </>
+                                                            )}
+                                                            {analysisMode === 'mom' && (
+                                                                <>
+                                                                    <td className="py-4 px-2 font-mono text-slate-900 text-right align-middle">{fCurrencyNoSuffix(summary.actual)}</td>
+                                                                    <td className="py-4 px-2 font-mono text-slate-600 text-right align-middle">{fCurrencyNoSuffix(summary.lastMonthActual)}</td>
+                                                                    <td className="py-4 px-2 text-center align-middle"><span className={`tracking-tighter ${summary.momGrowth >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>{fPercent(summary.momGrowth)}</span></td>
+                                                                    <td className={`py-4 pr-6 font-mono text-right align-middle ${summary.actual - summary.lastMonthActual >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
+                                                                        {fCurrencyNoSuffix(summary.actual - summary.lastMonthActual)}
+                                                                    </td>
+                                                                </>
+                                                            )}
+                                                            {analysisMode === 'cumulative' && (
+                                                                <>
+                                                                    <td className="py-4 px-2 font-mono text-slate-600 text-right align-middle">{fCurrencyNoSuffix(summary.cumulativeTarget)}</td>
+                                                                    <td className="py-4 px-2 font-mono text-slate-900 text-right align-middle">{fCurrencyNoSuffix(summary.cumulativeActual)}</td>
+                                                                    <td className="py-4 px-2 text-center align-middle"><span className="text-slate-900 tracking-tighter">{fPercent(summary.cumulativeAchievement)}</span></td>
+                                                                    <td className={`py-4 pr-6 font-mono text-right align-middle ${summary.cumulativeActual - summary.cumulativeTarget >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
+                                                                        {fCurrencyNoSuffix(summary.cumulativeActual - summary.cumulativeTarget)}
+                                                                    </td>
+                                                                </>
+                                                            )}
                                                         </tr>
                                                     </tfoot>
                                                 </table>
