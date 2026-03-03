@@ -585,9 +585,9 @@ export default function App() {
 
                             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
                                 <div className="xl:col-span-4">
-                                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                                    <div className="grid grid-cols-1 lg:grid-cols-5 items-start gap-6">
                                         {/* Detailed Team Analysis Table (LEFT - 3/5) */}
-                                        <div className="lg:col-span-3 bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm flex flex-col">
+                                        <div className="lg:col-span-3 bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm flex flex-col max-h-[1000px]">
                                             <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center whitespace-nowrap overflow-x-auto no-scrollbar">
                                                 <div className="flex items-center gap-4">
                                                     <h3 className="text-base font-black text-slate-600 uppercase tracking-widest flex items-center gap-2 shrink-0">
@@ -629,7 +629,7 @@ export default function App() {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="overflow-x-auto custom-scrollbar flex-1 min-h-[400px]">
+                                            <div className="flex-1 overflow-x-auto overflow-y-auto max-h-[800px] no-scrollbar">
                                                 <table className="w-full text-left table-fixed min-w-[650px]">
                                                     <thead className="sticky top-0 z-10 bg-slate-50 border-b-2 border-slate-200">
                                                         <tr className="text-slate-700 font-extrabold text-[13px] md:text-[14px] uppercase tracking-tighter align-middle">
@@ -798,8 +798,8 @@ export default function App() {
                                                     달성률 시각화 {drillDownData.length > 12 && <span className="text-[10px] font-bold text-slate-400 normal-case ml-2">(상위 10개 요약)</span>}
                                                 </h3>
                                             </div>
-                                            <div className="p-4 flex-1 min-h-[340px]">
-                                                <ResponsiveContainer>
+                                            <div className="p-4 h-[440px]">
+                                                <ResponsiveContainer width="100%" height="100%">
                                                     <BarChart data={slicedChartData} margin={{ left: -10, right: 10, top: 40, bottom: 0 }}>
                                                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                                                         <XAxis
@@ -873,7 +873,7 @@ export default function App() {
                                             {view === 'dashboard_type' ? '유형별 구성비' : '팀별 구성비'} {drillDownData.length > 10 && <span className="text-[10px] font-bold text-slate-400 normal-case ml-2">(상위 10개 요약)</span>}
                                         </h3>
                                     </div>
-                                    <div className="p-4 flex-1 min-h-[400px]">
+                                    <div className="p-4 h-[440px]">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie
