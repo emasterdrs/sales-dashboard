@@ -993,7 +993,27 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
                                 </h5>
                                 <ul className="space-y-2.5 text-[12px] text-slate-500 font-bold leading-relaxed">
                                     <li className="flex gap-2">• <span className="text-slate-700">수준별 목표:</span> 사원까지만 관리하려면 거래처/유형을 비워두세요. (거래처별 목표 설정 시 정보 입력)</li>
-                                    <li className="flex gap-2">• <span className="text-slate-700">유연한 매칭:</span> 입력된 정보의 깊이에 따라 시스템이 상위/하위 레벨 목표를 자동으로 합산하여 보여줍니다.</li>
+                                    <li className="flex gap-2 group relative cursor-help">
+                                        • <span className="text-slate-700">유연한 매칭:</span> 입력된 정보의 깊이에 따라 시스템이 상위/하위 레벨 목표를 자동으로 합산하여 보여줍니다.
+                                        <div className="absolute left-0 top-full mt-2 w-80 bg-slate-900 text-white p-4 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-[11px] border border-slate-700">
+                                            <p className="font-black text-amber-400 mb-2">💡 구체적인 동작 방식 (예시)</p>
+                                            <div className="space-y-3 font-bold leading-normal text-slate-300">
+                                                <div>
+                                                    <p className="text-white">1단계: 영업사원 단위 관리</p>
+                                                    <p className="text-[10px]">사원명만 입력 시 해당 사원의 총량 목표로 인식</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-white">2단계: 거래처 단위 관리</p>
+                                                    <p className="text-[10px]">거래처코드 입력 시 특정 거래처 전용 목표로 인식</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-white">3단계: 품목 유형 단위 관리</p>
+                                                    <p className="text-[10px]">유형명까지 입력 시 가장 상세한 하위 목표로 인식</p>
+                                                </div>
+                                                <p className="pt-1 text-slate-500 border-t border-slate-800 text-[9px]">* 어떤 수준으로 입력하든 상위 레벨로 자동 통합 집계됩니다.</p>
+                                            </div>
+                                        </div>
+                                    </li>
                                     <li className="flex gap-2">• <span className="text-slate-700">주의 사항:</span> '12345 와 같은 텍스트 코드 인식 형식도 시스템이 자동으로 정제하여 안전하게 처리합니다.</li>
                                 </ul>
                             </div>
