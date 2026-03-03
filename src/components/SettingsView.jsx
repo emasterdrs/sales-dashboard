@@ -955,6 +955,26 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
 
     return (
         <div className="space-y-8">
+            <div className="bg-indigo-50/50 border border-indigo-100 rounded-[20px] p-6 mb-8">
+                <div className="flex items-start gap-4">
+                    <div className="p-2.5 bg-indigo-500 text-white rounded-lg shadow-sm">
+                        <Zap size={18} />
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-black text-slate-800 mb-1">파일 업로드 및 목표 배분 가이드</h4>
+                        <p className="text-[12px] font-bold text-slate-500 leading-relaxed mb-3">
+                            <b>매출 실적:</b> 전 항목(유형, 거래처, 품목 등)이 정확히 입력되어야 구체적인 분석이 가능합니다.<br />
+                            <b>목표 데이터:</b> 선택적 목표 배분이 가능합니다. 관리 수준에 따라 배분 깊이를 조절하세요.
+                        </p>
+                        <ul className="text-[11px] text-indigo-600 font-black space-y-1">
+                            <li>• 사원별 총량 목표만 설정: 년도월, 영업팀, 영업사원명만 기입 (거래처/유형 공란)</li>
+                            <li>• 거래처별 목표 설정: 거래처코드, 거래처명 추가 기입</li>
+                            <li>• 유형별 목표 설정: 품목 유형(새 유형1~6) 추가 기입</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <SettingCard
                     title="매출 실적 파일"

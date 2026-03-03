@@ -448,6 +448,12 @@ export default function App() {
                         </div>
 
                         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 md:gap-6 shrink-0 w-full md:w-auto">
+                            {/* 안내 문구 추가 */}
+                            <div className="flex flex-col items-end pr-4 border-r border-slate-100 hidden xl:flex">
+                                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Smart Analytics Guide</span>
+                                <span className="text-[11px] font-bold text-slate-400 text-right">사원별 목표부터 세부 유형/거래처 목표까지<br />선택적으로 관리할 수 있는 유연한 엔진이 적용되었습니다.</span>
+                            </div>
+
                             <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition-all hover:border-indigo-500/30">
                                 <table className="text-[10px] md:text-[11px] leading-tight min-w-full">
                                     <thead className="bg-slate-50 border-b border-slate-200">

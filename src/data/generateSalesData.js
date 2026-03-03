@@ -60,6 +60,7 @@ export function generateStandardSalesData(year, month, targetAmount, teamWeights
 
 /**
  * 목표 데이터 생성 (팀별 가중치 반영)
+ * 유도리 있는 목표 설정을 위해 영업사원 레벨까지만 배분 (거래처/유형은 공란)
  */
 export function generateTargetData(year, month, totalTarget, teamWeights) {
     const data = [];
@@ -70,27 +71,18 @@ export function generateTargetData(year, month, totalTarget, teamWeights) {
         const teamSps = SALESPERSONS.filter(sp => sp.team === team);
         if (teamSps.length === 0) return;
 
-        const targetPerSp = teamTarget / teamSps.length;
+        const targetPerSp = Math.round(teamTarget / teamSps.length);
 
         teamSps.forEach(sp => {
-            const customersOfSp = ALL_CUSTOMERS.filter(c => c.salespersonId === sp.id);
-            if (customersOfSp.length === 0) return;
-
-            const targetPerCustomer = targetPerSp / customersOfSp.length;
-            const productTypes = Object.keys(PRODUCT_TYPES);
-
-            customersOfSp.forEach(customer => {
-                // 각 거래처별로 대표 품목유형 하나 할당 (심플하게)
-                const productType = productTypes[Math.floor(Math.random() * productTypes.length)];
-                data.push({
-                    '년도월': yearMonth,
-                    '영업팀': sp.team,
-                    '영업사원명': sp.name,
-                    '거래처코드': customer.code,
-                    '거래처명': customer.name,
-                    '품목유형': productType,
-                    '목표금액': Math.round(targetPerCustomer)
-                });
+            // 거래처코드, 거래처명, 품목유형은 공란으로 설정하여 사원별 총액 목표만 부여
+            data.push({
+                '년도월': yearMonth,
+                '영업팀': sp.team,
+                '영업사원명': sp.name,
+                '거래처코드': '',
+                '거래처명': '',
+                '품목유형': '',
+                '목표금액': targetPerSp
             });
         });
     });
