@@ -449,6 +449,34 @@ function OrganizationSubView({ setMasterData, masterData }) {
         saveChanges(updated, salespersons);
     };
 
+    const handleMoveSpUp = (e, spId) => {
+        e.stopPropagation();
+        const idx = salespersons.findIndex(s => s.id === spId);
+        if (idx <= 0) return;
+
+        const updated = [...salespersons];
+        const temp = updated[idx - 1];
+        updated[idx - 1] = updated[idx];
+        updated[idx] = temp;
+
+        setSalespersons(updated);
+        saveChanges(teams, updated);
+    };
+
+    const handleMoveSpDown = (e, spId) => {
+        e.stopPropagation();
+        const idx = salespersons.findIndex(s => s.id === spId);
+        if (idx === -1 || idx === salespersons.length - 1) return;
+
+        const updated = [...salespersons];
+        const temp = updated[idx + 1];
+        updated[idx + 1] = updated[idx];
+        updated[idx] = temp;
+
+        setSalespersons(updated);
+        saveChanges(teams, updated);
+    };
+
     const handleSaveSpEdit = (id) => {
         const updated = salespersons.map(s => s.id === id ? { ...s, name: spEditName } : s);
         setSalespersons(updated);
@@ -548,7 +576,14 @@ function OrganizationSubView({ setMasterData, masterData }) {
                 </div>
             </SettingCard>
 
-            <SettingCard title="영업사원 마스터" icon={Building2} desc={selectedTeam ? `선택된 팀: ${teams.find(t => t.id === selectedTeam)?.name || '이름 없음'}` : "먼저 대상 팀을 선택해주세요"}>
+            <SettingCard title="영업사원 마스터" icon={Building2} desc={
+                <>
+                    {selectedTeam ? `선택된 팀: ${teams.find(t => t.id === selectedTeam)?.name || '이름 없음'} (미등록 사원은 '기타'로 집계)` : "먼저 대상 팀을 선택해주세요"}
+                    <span className="block mt-1.5 text-[12px] font-bold text-slate-400 tracking-tight flex items-center gap-1.5">
+                        <Info size={12} className="text-indigo-400" /> 여기서 설정한 배치 순서에 따라 메인 대시보드에도 순서대로 표시됩니다.
+                    </span>
+                </>
+            }>
                 {selectedTeam ? (
                     <div className="space-y-3">
                         {currentSpList.length > 0 && (
@@ -602,33 +637,52 @@ function OrganizationSubView({ setMasterData, masterData }) {
                                                         handleSaveSpEdit(sp.id);
                                                     }
                                                 }}
-                                                className="px-2 py-1 border border-emerald-200 rounded-md text-[13px] font-black outline-none focus:ring-2 ring-emerald-500/30"
+                                                className="px-3 py-1.5 border border-indigo-200 rounded-lg text-sm font-black outline-none focus:ring-2 ring-indigo-500/30"
+                                                onClick={(e) => e.stopPropagation()}
                                             />
-                                            <button onClick={() => handleSaveSpEdit(sp.id)} className="text-[11px] bg-emerald-600 text-white px-2 py-1 rounded-md font-bold">저장</button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleSaveSpEdit(sp.id); }} className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold">확인</button>
                                         </div>
                                     ) : (
-                                        <span className="text-[13px] text-slate-700 font-black">{sp?.name || '이름 없음'}</span>
+                                        <span className="text-[14px] text-slate-700 font-bold">{sp.name}</span>
                                     )}
                                 </div>
-                                {editingSpId !== sp.id && (
-                                    <div className="flex items-center gap-1.5 mt-2 md:mt-0">
-                                        <button onClick={() => { setSpEditName(sp.name); setEditingSpId(sp.id); }} className="text-[11px] font-bold px-2 py-1 rounded bg-slate-100 text-slate-500 hover:bg-emerald-100 hover:text-emerald-600">수정</button>
-                                        <button onClick={() => handleDeleteSp(sp.id)} className="text-[11px] font-bold px-2 py-1 rounded bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600">삭제</button>
+                                <div className="flex items-center gap-2 mt-3 md:mt-0">
+                                    <button onClick={(e) => { e.stopPropagation(); setSpEditName(sp.name); setEditingSpId(sp.id); }} className="text-[11px] font-bold px-3 py-1 rounded-md bg-slate-100 text-slate-500 hover:bg-indigo-100 hover:text-indigo-600">수정</button>
+                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteSp(sp.id); }} className="text-[11px] font-bold px-3 py-1 rounded-md bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600">삭제</button>
+                                    <div className="flex items-center border border-slate-200 rounded-md ml-2 overflow-hidden bg-slate-50">
+                                        <button
+                                            onClick={(e) => handleMoveSpUp(e, sp.id)}
+                                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white transition-colors border-r border-slate-200"
+                                            title="순서 위로 이동"
+                                        >
+                                            <ArrowUp size={14} strokeWidth={3} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => handleMoveSpDown(e, sp.id)}
+                                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white transition-colors"
+                                            title="순서 아래로 이동"
+                                        >
+                                            <ArrowDown size={14} strokeWidth={3} />
+                                        </button>
                                     </div>
+                                </div>
                                 )}
                             </div>
                         ))}
-                        <button onClick={handleAddSp} className="w-full py-3 mt-4 border border-dashed border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50 rounded-xl text-emerald-600 text-xs font-black transition-all">
-                            + 영업사원 등록
+                        <button onClick={handleAddSp} className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-black hover:bg-slate-50 hover:border-emerald-200 hover:text-emerald-500 transition-all mt-4">
+                            + 새로운 영업사원 추가
                         </button>
                     </div>
                 ) : (
-                    <div className="p-8 text-center bg-slate-50 border border-slate-200 border-dashed rounded-[32px]">
-                        <p className="text-slate-400 font-bold">좌측에서 관리할 영업팀을 선택해주세요</p>
+                    <div className="py-12 text-center">
+                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mx-auto mb-4">
+                            <Users size={32} />
+                        </div>
+                        <p className="text-slate-400 font-bold">좌측 영업팀 목록에서 관리할 팀을 선택해주세요.</p>
                     </div>
                 )}
             </SettingCard>
-        </div>
+        </div >
     );
 }
 

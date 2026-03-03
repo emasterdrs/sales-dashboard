@@ -295,15 +295,21 @@ export default function App() {
     }, [bi, selectedMonth, currentView, mainTab, metricType, bizDayInfo]);
 
     const drillDownData = useMemo(() => {
-        const nextLevelMap = view === 'dashboard_type' ? { root: 'type', type: 'type' } : { root: 'team', team: 'person', person: 'person' };
+        const nextLevelMap = view === 'dashboard_type'
+            ? { root: 'type', type: 'type' }
+            : { root: 'team', team: 'person', person: 'customer', customer: 'item', item: 'item' };
         const nextLevel = nextLevelMap[currentView.level];
         return bi.getDrillDown(selectedMonth, currentView.level, currentView.id, nextLevel, mainTab, metricType, bizDayInfo);
     }, [path, bi, selectedMonth, currentView, mainTab, metricType, bizDayInfo]);
 
     const handleDrillDown = (item) => {
-        if (currentView.level === 'person' || currentView.level === 'type') return; // If we want drilldown for type, we can add it later. For now, stop at 'type' level similarly to 'person'. Wait, type currently has no drilldown.
-        const nextLevelMap = view === 'dashboard_type' ? { root: 'type' } : { root: 'team', team: 'person' };
-        setPath([...path, { level: nextLevelMap[currentView.level], id: item.id || item.name, name: item.name }]);
+        if (currentView.level === 'type' || currentView.level === 'item') return;
+        const nextLevelMap = view === 'dashboard_type'
+            ? { root: 'type' }
+            : { root: 'team', team: 'person', person: 'customer', customer: 'item' };
+        const nextLvl = nextLevelMap[currentView.level];
+        if (!nextLvl) return;
+        setPath([...path, { level: nextLvl, id: item.id || item.name, name: item.name }]);
     };
 
     const handleExport = () => {

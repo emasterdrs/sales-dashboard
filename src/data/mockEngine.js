@@ -22,6 +22,8 @@ export class SalesBI {
     constructor(actualData, targetData, lastYearData = [], lastMonthData = []) {
         let registeredTeamNames = ['영업1팀', '영업2팀', '영업3팀', '영업4팀', '영업5팀'];
         let registeredTypeNames = ['새 유형1', '새 유형2', '새 유형3', '새 유형4', '새 유형5', '새 유형6'];
+        let registeredSalespersons = []; // [{teamName: '', names: []}]
+
         try {
             const savedData = localStorage.getItem('dashboard_settings');
             const settingsData = savedData ? JSON.parse(savedData) : {};
@@ -31,23 +33,46 @@ export class SalesBI {
             if (settingsData.types) {
                 registeredTypeNames = settingsData.types.map(t => t.name);
             }
+            if (settingsData.salespersons && settingsData.teams) {
+                registeredSalespersons = settingsData.teams.map(team => ({
+                    teamName: team.name,
+                    names: settingsData.salespersons
+                        .filter(sp => sp.teamId === team.id)
+                        .map(sp => sp.name)
+                }));
+            }
         } catch (e) { }
 
         const mapTeamAndType = (r) => {
             const t = r['영업팀'];
             const pt = r['품목유형'];
+            const sp = r['영업사원명'];
+
             const mappedTeamName = registeredTeamNames.includes(t) ? t : '기타';
             const mappedTypeName = registeredTypeNames.includes(pt) ? pt : '기타';
-            return { ...r, '영업팀': mappedTeamName, '품목유형': mappedTypeName };
+
+            // 영업사원 기타 처리: 해당 팀의 등록된 사원 명단에 없으면 '기타'
+            let mappedSpName = sp;
+            if (mappedTeamName !== '기타') {
+                const teamMaster = registeredSalespersons.find(tm => tm.teamName === mappedTeamName);
+                if (teamMaster && !teamMaster.names.includes(sp)) {
+                    mappedSpName = '기타';
+                }
+            } else {
+                mappedSpName = '기타';
+            }
+
+            return { ...r, '영업팀': mappedTeamName, '품목유형': mappedTypeName, '영업사원명': mappedSpName };
         };
 
-        this.actual = actualData.map(mapTeamAndType);
-        this.target = targetData.map(mapTeamAndType);
-        this.lastYear = lastYearData.map(mapTeamAndType);
-        this.lastMonth = lastMonthData.map(mapTeamAndType);
+        this.actual = (actualData || []).map(mapTeamAndType);
+        this.target = (targetData || []).map(mapTeamAndType);
+        this.lastYear = (lastYearData || []).map(mapTeamAndType);
+        this.lastMonth = (lastMonthData || []).map(mapTeamAndType);
 
         this.registeredTeamNames = registeredTeamNames;
         this.registeredTypeNames = registeredTypeNames;
+        this.registeredSalespersons = registeredSalespersons;
     }
 
     /**
@@ -166,17 +191,32 @@ export class SalesBI {
 
         let data = [];
         if (nextLevel === 'team') {
-            data = this.getAggregatedData(this.actual, this.target, '영업팀', targetYM, bizDayInfo);
+            data = this.getAggregatedData(this.actual, this.target, '영업팀', targetYM, bizDayInfo, this.registeredTeamNames);
         } else if (nextLevel === 'type') {
-            data = this.getAggregatedData(this.actual, this.target, '품목유형', targetYM, bizDayInfo);
+            data = this.getAggregatedData(this.actual, this.target, '품목유형', targetYM, bizDayInfo, this.registeredTypeNames);
         } else if (nextLevel === 'person') {
+            // Remove restrictive parentTeam filter:
+            // The 'id' for 'person' level is already the team name from the previous drill-down.
+            // If 'id' is 'all', it means we are looking at all salespersons across all teams.
+            // If 'id' is a specific team name, we filter by that team.
             const filteredActual = id === 'all' ? this.actual : this.actual.filter(r => r['영업팀'] === id);
             const filteredTarget = id === 'all' ? this.target : this.target.filter(r => r['영업팀'] === id);
-            data = this.getAggregatedData(filteredActual, filteredTarget, '영업사원명', targetYM, bizDayInfo);
+            console.log(`DrillDown Person: id=${id}, actualCount=${filteredActual.length}, targetCount=${filteredTarget.length}`);
+            const teamMaster = this.registeredSalespersons.find(tm => tm.teamName === id);
+            const sortOrder = teamMaster ? teamMaster.names : null;
+            data = this.getAggregatedData(filteredActual, filteredTarget, '영업사원명', targetYM, bizDayInfo, sortOrder);
         } else if (nextLevel === 'customer') {
+            // level is 'person', id is salesperson name
             const filteredActual = this.actual.filter(r => r['영업사원명'] === id);
             const filteredTarget = this.target.filter(r => r['영업사원명'] === id);
+            console.log(`DrillDown Customer: id=${id}, actualCount=${filteredActual.length}, targetCount=${filteredTarget.length}`);
             data = this.getAggregatedData(filteredActual, filteredTarget, '거래처명', targetYM, bizDayInfo);
+        } else if (nextLevel === 'item') {
+            // level is 'customer', id is customer name
+            const filteredActual = this.actual.filter(r => r['거래처명'] === id);
+            const filteredTarget = this.target.filter(r => r['거래처명'] === id);
+            console.log(`DrillDown Item: id=${id}, actualCount=${filteredActual.length}, targetCount=${filteredTarget.length}`);
+            data = this.getAggregatedData(filteredActual, filteredTarget, '품목명', targetYM, bizDayInfo);
         }
 
         return data.map(d => this._mapMetric(d, metricType, mainTab, progressRate));
@@ -185,8 +225,30 @@ export class SalesBI {
     /**
      * 범용 집계 함수 (중량/금액/전년/전월/누계 모두 포함)
      */
-    getAggregatedData(actualData, targetData, keyField, targetYM, bizDayInfo) {
-        const keys = [...new Set([...actualData.map(r => r[keyField]), ...targetData.map(r => r[keyField])])];
+    getAggregatedData(actualData, targetData, keyField, targetYM, bizDayInfo, sortOrder = null) {
+        let keys = [...new Set([...actualData.map(r => r[keyField]), ...targetData.map(r => r[keyField])])].filter(k => k);
+
+        // 정렬 로직 적용
+        if (sortOrder) {
+            const orderMap = {};
+            sortOrder.forEach((name, idx) => orderMap[name] = idx);
+            keys.sort((a, b) => {
+                const idxA = orderMap[a] !== undefined ? orderMap[a] : 9999;
+                const idxB = orderMap[b] !== undefined ? orderMap[b] : 9999;
+                if (idxA !== idxB) return idxA - idxB;
+                if (a === '기타') return 1;
+                if (b === '기타') return -1;
+                return a.localeCompare(b);
+            });
+        } else {
+            // 기본 정렬 (실적순 혹은 가나다순 - 여기서는 가나다순 + 기타 마지막)
+            keys.sort((a, b) => {
+                if (a === '기타') return 1;
+                if (b === '기타') return -1;
+                return a.localeCompare(b);
+            });
+        }
+
         const currentBizDay = Math.max(1, bizDayInfo.currentBusinessDay);
         const businessDays = bizDayInfo.totalBusinessDays || 20;
 
@@ -212,7 +274,7 @@ export class SalesBI {
 
         const sumVal = (rows, field) => rows.reduce((acc, r) => acc + (parseFloat(r[field]) || 0), 0);
 
-        return keys.filter(k => k).map(key => {
+        return keys.map(key => {
             const currentActualRows = actualData.filter(r => r[keyField] === key && String(r['년도월']) === targetYM);
             const currentTargetRows = targetData.filter(r => r[keyField] === key && String(r['년도월']) === targetYM);
             const prevYearActualRows = actualData.filter(r => r[keyField] === key && String(r['년도월']) === getYestYearYM(targetYM));
