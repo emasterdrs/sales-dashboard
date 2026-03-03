@@ -166,7 +166,27 @@ export default function App() {
     const [showLogin, setShowLogin] = useState(false);
     const [loginId, setLoginId] = useState('');
     const [loginPw, setLoginPw] = useState('');
-    const [masterData, setMasterData] = useState(() => generateFullDataset());
+    const [masterData, setMasterData] = useState(() => {
+        try {
+            const saved = localStorage.getItem('dashboard_master_data');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed.actual && parsed.target) return parsed;
+            }
+        } catch (e) {
+            console.warn('Failed to load master data from localStorage', e);
+        }
+        return generateFullDataset();
+    });
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('dashboard_master_data', JSON.stringify(masterData));
+        } catch (e) {
+            console.warn('Failed to save master data to localStorage', e);
+        }
+    }, [masterData]);
+
     const [lastUpdated, setLastUpdated] = useState(() => {
         const now = new Date();
         const yyyy = now.getFullYear();
@@ -472,6 +492,33 @@ export default function App() {
                                             <optgroup label="2025년">
                                                 <option value="2025-12">2025년 12월</option>
                                                 <option value="2025-11">2025년 11월</option>
+                                                <option value="2025-10">2025년 10월</option>
+                                                <option value="2025-09">2025년 09월</option>
+                                                <option value="2025-08">2025년 08월</option>
+                                                <option value="2025-07">2025년 07월</option>
+                                                <option value="2025-06">2025년 06월</option>
+                                                <option value="2025-05">2025년 05월</option>
+                                                <option value="2025-04">2025년 04월</option>
+                                                <option value="2025-03">2025년 03월</option>
+                                                <option value="2025-02">2025년 02월</option>
+                                                <option value="2025-01">2025년 01월</option>
+                                            </optgroup>
+                                            <optgroup label="2024년">
+                                                <option value="2024-12">2024년 12월</option>
+                                                <option value="2024-11">2024년 11월</option>
+                                                <option value="2024-10">2024년 10월</option>
+                                                <option value="2024-09">2024년 09월</option>
+                                                <option value="2024-08">2024년 08월</option>
+                                                <option value="2024-07">2024년 07월</option>
+                                                <option value="2024-06">2024년 06월</option>
+                                                <option value="2024-05">2024년 05월</option>
+                                                <option value="2024-04">2024년 04월</option>
+                                                <option value="2024-03">2024년 03월</option>
+                                                <option value="2024-02">2024년 02월</option>
+                                                <option value="2024-01">2024년 01월</option>
+                                            </optgroup>
+                                            <optgroup label="2023년">
+                                                <option value="2023-12">2023년 12월</option>
                                             </optgroup>
                                         </select>
                                         <ChevronDown size={12} className="text-slate-400" />

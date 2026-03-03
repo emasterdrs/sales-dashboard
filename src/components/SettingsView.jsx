@@ -902,57 +902,146 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
         e.target.value = '';
     };
 
-    const handleDownloadExample = (type) => {
-        const dataset = generateFullDataset();
-        if (type === 'sales') {
-            const csv = convertToCSV(dataset.actual);
-            downloadCSV(csv, 'Sales_Data_Example.csv');
+    const handleDownloadExample = (type, mode = 'example') => {
+        let data = [];
+        if (mode === 'example') {
+            const dataset = generateFullDataset();
+            data = type === 'sales' ? dataset.actual : dataset.target;
         } else {
-            const csv = convertToCSV(dataset.target);
-            downloadCSV(csv, 'Target_Data_Example.csv');
+            // 빈 양식 (헤더만)
+            if (type === 'sales') {
+                data = [{
+                    '년도월': '202601',
+                    '영업팀': '영업1팀',
+                    '영업사원명': '홍길동',
+                    '거래처코드': 'C001',
+                    '거래처명': '거래처A',
+                    '품목유형': '치즈',
+                    '품목코드': 'P001',
+                    '품목명': '상품A',
+                    '매출금액': 1000000,
+                    '중량(KG)': 10.5
+                }];
+            } else {
+                data = [{
+                    '년도월': '202601',
+                    '영업팀': '영업1팀',
+                    '영업사원명': '홍길동',
+                    '거래처코드': 'C001',
+                    '거래처명': '거래처A',
+                    '품목유형': '치즈',
+                    '목표금액': 1200000
+                }];
+            }
+        }
+
+        const csv = convertToCSV(data);
+        const filename = mode === 'example'
+            ? (type === 'sales' ? 'Sales_Data_Example.csv' : 'Target_Data_Example.csv')
+            : (type === 'sales' ? 'Sales_Upload_Form.csv' : 'Target_Upload_Form.csv');
+        downloadCSV(csv, filename);
+    };
+
+    const handleResetData = () => {
+        if (window.confirm('모든 매출 및 목표 데이터를 초기화하시겠습니까? 초기화 후에는 복구할 수 없습니다.')) {
+            setMasterData({ actual: [], target: [] });
+            if (setLastUpdated) {
+                const now = new Date();
+                setLastUpdated(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+            }
+            alert('데이터가 초기화되었습니다.');
         }
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <SettingCard title="매출 실적 파일" icon={Filter} desc="ERP 시스템에서 추출된 마스타 데이터 업로드">
-                <input type="file" ref={salesInputRef} className="hidden" onChange={(e) => handleFileUpload(e, 'sales')} />
-                <button onClick={() => salesInputRef.current.click()} className="w-full py-16 border-2 border-dashed border-indigo-200 rounded-[32px] flex flex-col items-center justify-center hover:bg-indigo-50 transition-all group">
-                    <Filter className="text-indigo-500 mb-4 group-hover:scale-110 transition-transform" size={40} />
-                    <span className="text-lg font-black text-slate-800">엑셀/CSV 파일 선택</span>
-                    <span className="text-xs text-slate-400 font-bold mt-2">Duri Sales Master Format (.xlsx/.csv)</span>
-                </button>
-                <button onClick={() => handleDownloadExample('sales')} className="w-full mt-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-colors">
-                    + 판매데이터 예시 다운로드 (CSV)
-                </button>
-            </SettingCard>
+        <div className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <SettingCard
+                    title="매출 실적 파일"
+                    icon={Filter}
+                    desc="ERP 시스템에서 추출된 마스타 데이터 업로드"
+                    extra={
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => handleDownloadExample('sales', 'example')}
+                                className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-black hover:bg-indigo-100 transition-all border border-indigo-100"
+                            >
+                                예시 다운로드
+                            </button>
+                            <button
+                                onClick={() => handleDownloadExample('sales', 'form')}
+                                className="px-3 py-1.5 bg-white text-slate-600 rounded-lg text-xs font-black hover:bg-slate-100 transition-all border border-slate-200"
+                            >
+                                업로드 양식 다운로드
+                            </button>
+                        </div>
+                    }
+                >
+                    <input type="file" ref={salesInputRef} className="hidden" onChange={(e) => handleFileUpload(e, 'sales')} />
+                    <button onClick={() => salesInputRef.current.click()} className="w-full py-16 border-2 border-dashed border-indigo-200 rounded-[32px] flex flex-col items-center justify-center hover:bg-indigo-50 transition-all group">
+                        <Filter className="text-indigo-500 mb-4 group-hover:scale-110 transition-transform" size={40} />
+                        <span className="text-lg font-black text-slate-800">엑셀/CSV 파일 선택</span>
+                        <span className="text-xs text-slate-400 font-bold mt-2">Duri Sales Master Format (.xlsx/.csv)</span>
+                    </button>
+                </SettingCard>
 
-            <SettingCard title="목표 데이터 파일" icon={Target} desc="연간 및 월간 목표 수립 데이터 업로드">
-                <input type="file" ref={targetInputRef} className="hidden" onChange={(e) => handleFileUpload(e, 'target')} />
-                <button onClick={() => targetInputRef.current.click()} className="w-full py-16 border-2 border-dashed border-emerald-200 rounded-[32px] flex flex-col items-center justify-center hover:bg-emerald-50 transition-all group">
-                    <Target className="text-emerald-500 mb-4 group-hover:scale-110 transition-transform" size={40} />
-                    <span className="text-lg font-black text-slate-800">목표 파일 업로드</span>
-                    <span className="text-xs text-slate-400 font-bold mt-2">Duri Target Schema (.csv/.xlsx)</span>
+                <SettingCard
+                    title="목표 데이터 파일"
+                    icon={Target}
+                    desc="연간 및 월간 목표 수립 데이터 업로드"
+                    extra={
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => handleDownloadExample('target', 'example')}
+                                className="px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-black hover:bg-emerald-100 transition-all border border-emerald-100"
+                            >
+                                예시 다운로드
+                            </button>
+                            <button
+                                onClick={() => handleDownloadExample('target', 'form')}
+                                className="px-3 py-1.5 bg-white text-slate-600 rounded-lg text-xs font-black hover:bg-slate-100 transition-all border border-slate-200"
+                            >
+                                업로드 양식 다운로드
+                            </button>
+                        </div>
+                    }
+                >
+                    <input type="file" ref={targetInputRef} className="hidden" onChange={(e) => handleFileUpload(e, 'target')} />
+                    <button onClick={() => targetInputRef.current.click()} className="w-full py-16 border-2 border-dashed border-emerald-200 rounded-[32px] flex flex-col items-center justify-center hover:bg-emerald-50 transition-all group">
+                        <Target className="text-emerald-500 mb-4 group-hover:scale-110 transition-transform" size={40} />
+                        <span className="text-lg font-black text-slate-800">목표 파일 업로드</span>
+                        <span className="text-xs text-slate-400 font-bold mt-2">Duri Target Schema (.csv/.xlsx)</span>
+                    </button>
+                </SettingCard>
+            </div>
+
+            <div className="flex justify-center pt-8">
+                <button
+                    onClick={handleResetData}
+                    className="flex items-center gap-2 px-8 py-4 bg-rose-50 text-rose-600 rounded-[24px] font-black text-sm hover:bg-rose-100 transition-all border border-rose-100 shadow-sm"
+                >
+                    <AlertCircle size={18} />
+                    전체 데이터 초기화
                 </button>
-                <button onClick={() => handleDownloadExample('target')} className="w-full mt-4 py-3 bg-emerald-50 text-emerald-600 rounded-xl font-bold text-sm hover:bg-emerald-100 transition-colors">
-                    + 목표데이터 예시 다운로드 (CSV)
-                </button>
-            </SettingCard>
+            </div>
         </div>
     );
 }
 
-function SettingCard({ title, icon: Icon, desc, children }) {
+function SettingCard({ title, icon: Icon, desc, extra, children }) {
     return (
         <div className="bg-white border border-slate-200 rounded-[40px] p-8 shadow-sm hover:shadow-md transition-all">
-            <div className="flex items-start gap-5 mb-8">
-                <div className="p-4 bg-slate-50 rounded-2xl text-slate-900 border border-slate-100 shadow-sm">
-                    <Icon size={24} />
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-5 mb-8">
+                <div className="flex items-start gap-5">
+                    <div className="p-4 bg-slate-50 rounded-2xl text-slate-900 border border-slate-100 shadow-sm">
+                        <Icon size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-slate-800">{title}</h3>
+                        <p className="text-sm font-bold text-slate-400 mt-1">{desc}</p>
+                    </div>
                 </div>
-                <div>
-                    <h3 className="text-xl font-black text-slate-800">{title}</h3>
-                    <p className="text-sm font-bold text-slate-400 mt-1">{desc}</p>
-                </div>
+                {extra}
             </div>
             {children}
         </div>

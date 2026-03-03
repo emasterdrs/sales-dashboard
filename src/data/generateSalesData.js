@@ -9,77 +9,88 @@ const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + mi
 const randomElement = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 /**
- * 매출 데이터 생성 (표준 헤더 반영)
- * 헤더: 년도월, 영업팀, 영업사원명, 거래처코드, 거래처명, 품목코드, 품목명, 매출금액, 중량(KG)
+ * 매출 데이터 생성 (팀별 가중치 반영)
  */
-export function generateStandardSalesData(year, month, targetAmount) {
-    const data = [];
-    let currentAmount = 0;
-    const yearMonth = `${year}${(month).toString().padStart(2, '0')}`;
-
-    // 영업일수 계산 (임시로 평일 기준)
-    const daysInMonth = new Date(year, month, 0).getDate();
-
-    // 데이터 생성 루프
-    while (currentAmount < targetAmount) {
-        const sp = randomElement(SALESPERSONS);
-        const customersOfSp = ALL_CUSTOMERS.filter(c => c.salespersonId === sp.id);
-        const customer = randomElement(customersOfSp);
-        const product = randomElement(ALL_PRODUCTS);
-
-        const quantity = randomInt(10, 100);
-        const amount = quantity * product.unitPrice;
-        const weight = (quantity * (0.5 + Math.random() * 2)).toFixed(2); // 랜덤 중량 생성
-
-        data.push({
-            '년도월': yearMonth,
-            '영업팀': sp.team,
-            '영업사원명': sp.name,
-            '거래처코드': customer.code,
-            '거래처명': customer.name,
-            '품목유형': product.type,
-            '품목코드': product.code,
-            '품목명': product.name,
-            '매출금액': amount,
-            '중량(KG)': parseFloat(weight)
-        });
-
-        currentAmount += amount;
-
-        // 너무 많이 생성되는 것 방지
-        if (data.length > 5000) break;
-    }
-
-    return data;
-}
-
-/**
- * 목표 데이터 생성 (표준 헤더 반영)
- * 헤더: 년도월, 영업팀, 영업사원명, 거래처코드, 거래처명, 목표금액
- */
-export function generateTargetData(year, month, totalTarget) {
+export function generateStandardSalesData(year, month, targetAmount, teamWeights) {
     const data = [];
     const yearMonth = `${year}${(month).toString().padStart(2, '0')}`;
-    const spCount = SALESPERSONS.length;
-    const avgTargetPerSp = totalTarget / spCount;
 
-    SALESPERSONS.forEach(sp => {
-        const customersOfSp = ALL_CUSTOMERS.filter(c => c.salespersonId === sp.id);
-        const spTarget = avgTargetPerSp * (0.8 + Math.random() * 0.4); // 사원별 목표 편차
+    // 각 팀별로 배분된 금액에 따라 데이터 생성
+    Object.entries(teamWeights).forEach(([team, weight]) => {
+        const teamTargetAmount = targetAmount * weight;
+        let teamCurrentAmount = 0;
 
-        const targetPerCustomer = spTarget / customersOfSp.length;
+        // 해당 팀 사원들
+        const teamSps = SALESPERSONS.filter(sp => sp.team === team);
+        if (teamSps.length === 0) return;
 
-        const types = Object.keys(PRODUCT_TYPES);
-        customersOfSp.forEach(customer => {
-            const productType = types[Math.floor(Math.random() * types.length)];
+        while (teamCurrentAmount < teamTargetAmount) {
+            const sp = teamSps[Math.floor(Math.random() * teamSps.length)];
+            const customersOfSp = ALL_CUSTOMERS.filter(c => c.salespersonId === sp.id);
+            if (customersOfSp.length === 0) continue;
+
+            const customer = customersOfSp[Math.floor(Math.random() * customersOfSp.length)];
+            const product = ALL_PRODUCTS[Math.floor(Math.random() * ALL_PRODUCTS.length)];
+
+            // 금액을 균일하게 배분하기 위해 랜덤성 조절 (회당 약 5000만~1억 목표 시뮬레이션)
+            const quantity = randomInt(50, 200);
+            const amount = Math.round(quantity * product.unitPrice * 50); // 금액 단위 조정
+            const weight_kg = (quantity * (0.5 + Math.random() * 2)).toFixed(2);
+
             data.push({
                 '년도월': yearMonth,
                 '영업팀': sp.team,
                 '영업사원명': sp.name,
                 '거래처코드': customer.code,
                 '거래처명': customer.name,
-                '품목유형': productType,
-                '목표금액': Math.round(targetPerCustomer)
+                '품목유형': product.type,
+                '품목코드': product.code,
+                '품목명': product.name,
+                '매출금액': amount,
+                '중량(KG)': parseFloat(weight_kg)
+            });
+
+            teamCurrentAmount += amount;
+            if (data.length > 20000) break; // 안전장치
+        }
+    });
+
+    return data;
+}
+
+/**
+ * 목표 데이터 생성 (팀별 가중치 반영)
+ */
+export function generateTargetData(year, month, totalTarget, teamWeights) {
+    const data = [];
+    const yearMonth = `${year}${(month).toString().padStart(2, '0')}`;
+
+    Object.entries(teamWeights).forEach(([team, weight]) => {
+        const teamTarget = totalTarget * weight;
+        const teamSps = SALESPERSONS.filter(sp => sp.team === team);
+        if (teamSps.length === 0) return;
+
+        const targetPerSp = teamTarget / teamSps.length;
+
+        teamSps.forEach(sp => {
+            const customersOfSp = ALL_CUSTOMERS.filter(c => c.salespersonId === sp.id);
+            if (customersOfSp.length === 0) return;
+
+            const targetPerCustomer = targetPerSp / customersOfSp.length;
+            const productTypes = Object.keys(PRODUCT_TYPES);
+
+            customersOfSp.forEach(customer => {
+                // 각 거래처별로 대표 품목유형 하나 할당 (심플하게)
+                const productType = productTypes[Math.floor(Math.random() * productTypes.length)];
+                data.push({
+                    '년도월': yearMonth,
+                    '영업팀': sp.team,
+                    '영업사원명': sp.name,
+                    '거래처코드': customer.code,
+                    '거래처명': customer.name,
+                    '품목유형': productType,
+                    '목표금액': Math.round(targetPerCustomer)
+                });
             });
         });
     });
@@ -88,30 +99,54 @@ export function generateTargetData(year, month, totalTarget) {
 }
 
 /**
- * 전 기간 데이터셋 생성 (2025-01 ~ 2026-02)
- * 2025년 월평균 실적: 약 300억 준
- * 2026년 월평균 목표/실적: 약 400억 수준
+ * 전 기간 데이터셋 생성 (2023-12 ~ 2026-02)
+ * 23년 12월 매출 100억 시작, 매월 10억 증액
+ * 팀 비중: 1팀 20%, 2팀 40%, 3팀 20%, 4팀 10%, 5팀 10%
+ * 달성률: 110% 이상 유지 (실적 = 목표 * 1.15)
  */
 export function generateFullDataset() {
-    const months = [
-        { year: 2025, range: [1, 12], avg: 31000000000 },
-        { year: 2026, range: [1, 2], avg: 42000000000 }
-    ];
+    const startYear = 2023;
+    const startMonth = 12;
+    const endYear = 2026;
+    const endMonth = 3; // 3월까지 확장
+
+    const teamWeights = {
+        '영업1팀': 0.2,
+        '영업2팀': 0.4,
+        '영업3팀': 0.2,
+        '영업4팀': 0.1,
+        '영업5팀': 0.1
+    };
 
     const fullActual = [];
     const fullTarget = [];
 
-    months.forEach(period => {
-        for (let m = period.range[0]; m <= period.range[1]; m++) {
-            // 실제 실적은 평균에서 ±15% 변동 부여
-            const monthlyActual = period.avg * (0.85 + Math.random() * 0.3);
-            // 목표는 평균에서 ±5% 변동 부여
-            const monthlyTarget = period.avg * (0.95 + Math.random() * 0.1);
+    let currentYear = startYear;
+    let currentMonth = startMonth;
+    let monthlyActualAmount = 10000000000; // 100억
 
-            fullActual.push(...generateStandardSalesData(period.year, m, monthlyActual));
-            fullTarget.push(...generateTargetData(period.year, m, monthlyTarget));
+    while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
+        // 달성률 110% 이상을 위해 목표는 실적보다 낮게 설정
+        // 실적 = 목표 * 1.15 => 목표 = 실적 / 1.15
+        let targetAmountForMonth = Math.round(monthlyActualAmount / 1.15);
+        let actualAmountForMonth = monthlyActualAmount;
+
+        // 2026년 3월 특수 처리: 4일 기준, 1~3일 중 영업일은 3일 하루 뿐 (2일 대체공휴일)
+        // 1일치 실적만 반영 (한 달 약 20일 기준 1/20 수준)
+        if (currentYear === 2026 && currentMonth === 3) {
+            actualAmountForMonth = Math.round(monthlyActualAmount * (1 / 21)); // 약 1일치
         }
-    });
+
+        fullActual.push(...generateStandardSalesData(currentYear, currentMonth, actualAmountForMonth, teamWeights));
+        fullTarget.push(...generateTargetData(currentYear, currentMonth, targetAmountForMonth, teamWeights));
+
+        currentMonth++;
+        if (currentMonth > 12) {
+            currentMonth = 1;
+            currentYear++;
+        }
+        monthlyActualAmount += 1000000000; // 매월 10억 증가
+    }
 
     return { actual: fullActual, target: fullTarget };
 }
@@ -120,10 +155,17 @@ export function generateFullDataset() {
  * CSV 변환 함수
  */
 export function convertToCSV(data) {
-    if (data.length === 0) return '';
+    if (!data || data.length === 0) return '';
     const headers = Object.keys(data[0]);
     const rows = data.map(row =>
-        headers.map(header => row[header]).join(',')
+        headers.map(header => {
+            const val = row[header];
+            // 쉼표 포함 시 따옴표 처리
+            if (typeof val === 'string' && val.includes(',')) {
+                return `"${val}"`;
+            }
+            return val;
+        }).join(',')
     );
     return [headers.join(','), ...rows].join('\n');
 }
