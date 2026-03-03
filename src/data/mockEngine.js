@@ -282,6 +282,7 @@ export class SalesBI {
         const mom = lastMonth > 0 ? ((actual - lastMonth) / lastMonth) * 100 : 0;
         const cumulativeAchievement = cumulativeTarget > 0 ? (cumulativeActual / cumulativeTarget) * 100 : (cumulativeActual > 0 ? 100 : 0);
 
+        const progressGap = achievement - (mainTab === 'expected' ? 100 : progressRate);
         const overShort = mainTab === 'expected' ? (actual - target) : (actual - (target * (progressRate / 100)));
 
         return {
@@ -293,6 +294,7 @@ export class SalesBI {
             achievement,
             yoy,
             mom,
+            progressGap,
             overShort,
             cumulativeActual,
             cumulativeTarget,

@@ -87,7 +87,7 @@ const WEIGHT_UNITS = [
     { key: 'EA', label: '개(EA)', divisor: 1, suffix: 'ea' }
 ];
 
-const fPercent = (val) => `${val.toFixed(1)}%`;
+const fPercent = (val) => `${(val || 0).toFixed(1)}%`;
 
 // 컴팩트 KPI 카드 (라이트 테마 최적화)
 function CompactStat({ title, value, detail, icon: Icon, color, trend }) {
@@ -113,7 +113,7 @@ function CompactStat({ title, value, detail, icon: Icon, color, trend }) {
                     <h3 className="text-lg font-black text-slate-900">{value}</h3>
                     {trend !== undefined && (
                         <span className={`text-[10px] font-bold ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {isPositive ? '+' : ''}{trend.toFixed(1)}%
+                            {isPositive ? '+' : ''}{(trend || 0).toFixed(1)}%
                         </span>
                     )}
                 </div>
@@ -312,9 +312,9 @@ export default function App() {
             d.name,
             d.target,
             d.actual,
-            `${d.achievement.toFixed(1)}%`,
+            `${(d.achievement || 0).toFixed(1)}%`,
             d.lastYear,
-            `${d.yoy.toFixed(1)}%`
+            `${(d.yoy || 0).toFixed(1)}%`
         ]);
         const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
         const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -645,8 +645,8 @@ export default function App() {
                                                                             <span className="font-extrabold text-slate-900 text-[15px] block">{fPercent(item.achievement)}</span>
                                                                         </td>
                                                                         <td className="py-4 px-2 text-center align-middle">
-                                                                            <span className={`font-extrabold text-[15px] ${item.progressGap >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
-                                                                                {item.progressGap > 0 ? '+' : ''}{item.progressGap.toFixed(1)}%
+                                                                            <span className={`font-extrabold text-[15px] ${(item.progressGap || 0) >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
+                                                                                {(item.progressGap || 0) > 0 ? '+' : ''}{(item.progressGap || 0).toFixed(1)}%
                                                                             </span>
                                                                         </td>
                                                                         <td className={`py-4 pr-6 font-mono text-right font-extrabold text-[15px] align-middle ${item.overShort >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
@@ -702,8 +702,8 @@ export default function App() {
                                                                     <td className="py-4 px-2 font-mono text-slate-900 text-right align-middle">{fCurrencyNoSuffix(summary.actual)}</td>
                                                                     <td className="py-4 px-2 text-center align-middle"><span className="text-slate-900 tracking-tighter">{fPercent(summary.achievementRate)}</span></td>
                                                                     <td className="py-4 px-2 text-center align-middle">
-                                                                        <span className={`tracking-tighter ${summary.progressGap >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
-                                                                            {summary.progressGap > 0 ? '+' : ''}{summary.progressGap.toFixed(1)}%
+                                                                        <span className={`tracking-tighter ${(summary.progressGap || 0) >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
+                                                                            {(summary.progressGap || 0) > 0 ? '+' : ''}{(summary.progressGap || 0).toFixed(1)}%
                                                                         </span>
                                                                     </td>
                                                                     <td className={`py-4 pr-6 font-mono text-right align-middle ${summary.overShort >= 0 ? 'text-blue-600' : 'text-rose-500'}`}>
