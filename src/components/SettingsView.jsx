@@ -57,7 +57,7 @@ export function SettingsView({ masterData, setMasterData, setLastUpdated, select
                     {subView === 'bizDays' && <BusinessDaysSubView year={selectedYear} />}
                     {subView === 'org' && <OrganizationSubView setMasterData={setMasterData} masterData={masterData} />}
                     {subView === 'types' && <TypesSubView setMasterData={setMasterData} masterData={masterData} />}
-                    {subView === 'data' && <DataUploadSubView setMasterData={setMasterData} setLastUpdated={setLastUpdated} />}
+                    {subView === 'data' && <DataUploadSubView setMasterData={setMasterData} setLastUpdated={setLastUpdated} masterData={masterData} />}
                 </motion.div>
             </AnimatePresence>
         </div>
@@ -865,13 +865,31 @@ function TypesSubView({ masterData, setMasterData }) {
 /**
  * 4. 데이터 업로드 센터 (원본 스타일 유지하되 정제)
  */
-function DataUploadSubView({ setMasterData, setLastUpdated }) {
+function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
     const salesInputRef = useRef(null);
     const targetInputRef = useRef(null);
 
-    const handleFileUpload = (e, type) => {
+    // 파일 선택 상태
+    const [selectedFiles, setSelectedFiles] = useState({ sales: null, target: null });
+    // 최근 업로드 정보
+    const [uploadHistory, setUploadHistory] = useState({
+        sales: { filename: '-', time: '-' },
+        target: { filename: '-', time: '-' }
+    });
+
+    const handleFileSelect = (e, type) => {
         const file = e.target.files[0];
-        if (!file) return;
+        if (file) {
+            setSelectedFiles(prev => ({ ...prev, [type]: file }));
+        }
+    };
+
+    const handleFileUploadExecute = (type) => {
+        const file = selectedFiles[type];
+        if (!file) {
+            alert('먼저 파일을 선택해 주세요.');
+            return;
+        }
 
         const reader = new FileReader();
         reader.onload = (evt) => {
@@ -880,40 +898,63 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
                 const wb = window.XLSX.read(bstr, { type: 'binary' });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
-                let data = window.XLSX.utils.sheet_to_json(ws);
+                let uploadedRows = window.XLSX.utils.sheet_to_json(ws);
 
-                // 데이터 정제 로직 (트리밍 및 문자열화)
-                data = data.map(item => {
+                if (uploadedRows.length === 0) {
+                    alert('파일에 데이터가 없습니다.');
+                    return;
+                }
+
+                // 데이터 정제 로직
+                uploadedRows = uploadedRows.map(item => {
                     const newItem = { ...item };
-                    // 코드 및 명칭 필드 정제
                     const fieldsToClean = ['영업팀', '영업사원명', '거래처코드', '거래처명', '품목유형', '품목코드', '품목명'];
                     fieldsToClean.forEach(f => {
                         if (newItem[f] !== undefined && newItem[f] !== null) {
-                            // '12345 와 같이 숫자가 아닌 문자열로 인식되도록 처리된 경우도 깨끗하게 문자열로 변환
-                            newItem[f] = String(newItem[f]).trim();
+                            // 앞의 작은따옴표(') 제거 및 트리밍
+                            newItem[f] = String(newItem[f]).trim().replace(/^'/, '');
                         }
                     });
                     return newItem;
                 });
 
+                // 스마트 병합: 업로드된 파일의 '년도월' 컬렉션
+                const monthsInFile = [...new Set(uploadedRows.map(r => String(r['년도월'])))];
+
                 setMasterData(prev => {
-                    const newData = { ...prev };
-                    if (type === 'sales') newData.actual = data;
-                    else newData.target = data;
-                    return newData;
+                    const currentData = type === 'sales' ? prev.actual : prev.target;
+                    // 기존 데이터에서 업로드된 달과 겹치는 데이터 제거
+                    const filteredData = currentData.filter(r => !monthsInFile.includes(String(r['년도월'])));
+                    // 새로운 데이터 합류
+                    const mergedData = [...filteredData, ...uploadedRows];
+
+                    return {
+                        ...prev,
+                        [type === 'sales' ? 'actual' : 'target']: mergedData
+                    };
                 });
 
-                if (setLastUpdated) {
-                    const now = new Date();
-                    setLastUpdated(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
-                }
-                alert(`${type === 'sales' ? '매출실적' : '목표'} 업로드 성공!`);
+                const now = new Date();
+                const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+                if (setLastUpdated) setLastUpdated(timeStr);
+
+                setUploadHistory(prev => ({
+                    ...prev,
+                    [type]: { filename: file.name, time: timeStr }
+                }));
+
+                setSelectedFiles(prev => ({ ...prev, [type]: null }));
+                if (type === 'sales') salesInputRef.current.value = '';
+                else targetInputRef.current.value = '';
+
+                alert(`${type === 'sales' ? '매출실적' : '목표'} 업로드 성공! (${monthsInFile.join(', ')} 데이터가 갱신되었습니다.)`);
             } catch (error) {
-                alert('파일 오류가 발생했습니다.');
+                console.error(error);
+                alert('파일 처리 중 오류가 발생했습니다.');
             }
         };
         reader.readAsBinaryString(file);
-        e.target.value = '';
     };
 
     const handleDownloadExample = (type, mode = 'example') => {
@@ -976,8 +1017,8 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
                     <div>
                         <h4 className="text-xl font-black text-slate-800 mb-3 tracking-tighter uppercase">Data Upload Master Guide</h4>
                         <ul className="space-y-2.5 text-[12px] text-slate-500 font-bold leading-relaxed">
-                            <li className="flex gap-2">• <span className="text-slate-700">작성 요령:</span> 다운로드한 양식의 <b>1행은 제목(헤더)</b>이며, <b>2행의 예시 데이터는 삭제하거나 실제 데이터로 덮어쓰기</b> 하여 작성해 주세요.</li>
-                            <li className="flex gap-2">• <span className="text-slate-700">시작 위치:</span> 실질적인 데이터는 2행부터 시작되어야 시스템이 누락 없이 읽어 들입니다.</li>
+                            <li className="flex gap-2">• <span className="text-slate-700">작성 요령:</span> 다운로드한 양식의 <b>1행은 제목(헤더)</b>이며, 2행부터 실제 데이터를 입력해 주세요.</li>
+                            <li className="flex gap-2">• <span className="text-slate-700">스마트 매칭(월별 업로드):</span> 기존 전체 데이터를 지울 필요 없이, <b>추가된 달의 데이터만 파일로 만들어 업로드</b> 하시면 해당 월만 자동 갱신됩니다.</li>
                         </ul>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mt-6 pt-6 border-t border-slate-100">
                             <div>
@@ -1034,30 +1075,33 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
                     desc="ERP 시스템에서 추출된 마스타 데이터 업로드"
                     extra={
                         <div className="flex gap-2">
-                            <button
-                                onClick={() => handleDownloadExample('sales', 'example')}
-                                className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-black hover:bg-indigo-100 transition-all border border-indigo-100"
-                            >
-                                예시 다운로드
-                            </button>
-                            <button
-                                onClick={() => handleDownloadExample('sales', 'form')}
-                                className="px-3 py-1.5 bg-white text-slate-600 rounded-lg text-xs font-black hover:bg-slate-100 transition-all border border-slate-200"
-                            >
-                                업로드 양식 다운로드
-                            </button>
+                            <button onClick={() => handleDownloadExample('sales', 'example')} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-black hover:bg-indigo-100 transition-all border border-indigo-100">예시 다운로드</button>
+                            <button onClick={() => handleDownloadExample('sales', 'form')} className="px-3 py-1.5 bg-white text-slate-600 rounded-lg text-xs font-black hover:bg-slate-100 transition-all border border-slate-200">업로드 양식 다운로드</button>
                         </div>
                     }
                 >
-                    <input type="file" ref={salesInputRef} className="hidden" onChange={(e) => handleFileUpload(e, 'sales')} />
-                    <button onClick={() => salesInputRef.current.click()} className="w-full py-16 border-2 border-dashed border-indigo-200 rounded-[32px] flex flex-col items-center justify-center hover:bg-indigo-50 transition-all group">
-                        <Filter className="text-indigo-500 mb-4 group-hover:scale-110 transition-transform" size={40} />
-                        <span className="text-lg font-black text-slate-800">엑셀/CSV 파일 선택</span>
-                        <p className="text-center mt-3">
-                            <span className="text-[10px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded font-black border border-rose-100 italic">주의: 1행(헤더) 유지, 2행 예시는 삭제 후 입력</span><br />
-                            <span className="text-[10px] text-slate-400 font-bold">Duri Sales Master Format (.xlsx/.csv)</span>
-                        </p>
-                    </button>
+                    <div className="space-y-6">
+                        <div className="flex flex-col md:flex-row gap-3">
+                            <div className="flex-1 h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center text-sm font-bold text-slate-500 truncate">
+                                {selectedFiles.sales ? selectedFiles.sales.name : '선택된 파일 없음'}
+                            </div>
+                            <input type="file" ref={salesInputRef} className="hidden" onChange={(e) => handleFileSelect(e, 'sales')} accept=".csv,.xlsx" />
+                            <button onClick={() => salesInputRef.current.click()} className="px-6 h-12 bg-slate-800 text-white rounded-xl font-black text-sm hover:bg-slate-700 transition-all shadow-sm">찾아보기</button>
+                            <button onClick={() => handleFileUploadExecute('sales')} className="px-6 h-12 bg-indigo-600 text-white rounded-xl font-black text-sm hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100">업로드</button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-50">
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">최근 업로드 파일</p>
+                                <p className="text-sm font-black text-slate-700 truncate">{uploadHistory.sales.filename}</p>
+                            </div>
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">최근 업로드 일시</p>
+                                <p className="text-sm font-black text-slate-700">{uploadHistory.sales.time}</p>
+                            </div>
+                        </div>
+                        <p className="text-[10px] text-rose-500 font-black italic bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100">※ 파일 업로드 시 해당 년도월의 기존 데이터가 자동으로 덮어씌워집니다.</p>
+                    </div>
                 </SettingCard>
 
                 <SettingCard
@@ -1066,30 +1110,33 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
                     desc="연간 및 월간 목표 수립 데이터 업로드"
                     extra={
                         <div className="flex gap-2">
-                            <button
-                                onClick={() => handleDownloadExample('target', 'example')}
-                                className="px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-black hover:bg-emerald-100 transition-all border border-emerald-100"
-                            >
-                                예시 다운로드
-                            </button>
-                            <button
-                                onClick={() => handleDownloadExample('target', 'form')}
-                                className="px-3 py-1.5 bg-white text-slate-600 rounded-lg text-xs font-black hover:bg-slate-100 transition-all border border-slate-200"
-                            >
-                                업로드 양식 다운로드
-                            </button>
+                            <button onClick={() => handleDownloadExample('target', 'example')} className="px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-black hover:bg-emerald-100 transition-all border border-emerald-100">예시 다운로드</button>
+                            <button onClick={() => handleDownloadExample('target', 'form')} className="px-3 py-1.5 bg-white text-slate-600 rounded-lg text-xs font-black hover:bg-slate-100 transition-all border border-slate-200">업로드 양식 다운로드</button>
                         </div>
                     }
                 >
-                    <input type="file" ref={targetInputRef} className="hidden" onChange={(e) => handleFileUpload(e, 'target')} />
-                    <button onClick={() => targetInputRef.current.click()} className="w-full py-16 border-2 border-dashed border-emerald-200 rounded-[32px] flex flex-col items-center justify-center hover:bg-emerald-50 transition-all group">
-                        <Target className="text-emerald-500 mb-4 group-hover:scale-110 transition-transform" size={40} />
-                        <span className="text-lg font-black text-slate-800">목표 파일 업로드</span>
-                        <p className="text-center mt-3">
-                            <span className="text-[10px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded font-black border border-rose-100 italic">주의: 1행(헤더) 유지, 2행 예시는 삭제 후 입력</span><br />
-                            <span className="text-[10px] text-slate-400 font-bold">Duri Target Schema (.csv/.xlsx)</span>
-                        </p>
-                    </button>
+                    <div className="space-y-6">
+                        <div className="flex flex-col md:flex-row gap-3">
+                            <div className="flex-1 h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center text-sm font-bold text-slate-500 truncate">
+                                {selectedFiles.target ? selectedFiles.target.name : '선택된 파일 없음'}
+                            </div>
+                            <input type="file" ref={targetInputRef} className="hidden" onChange={(e) => handleFileSelect(e, 'target')} accept=".csv,.xlsx" />
+                            <button onClick={() => targetInputRef.current.click()} className="px-6 h-12 bg-slate-800 text-white rounded-xl font-black text-sm hover:bg-slate-700 transition-all shadow-sm">찾아보기</button>
+                            <button onClick={() => handleFileUploadExecute('target')} className="px-6 h-12 bg-emerald-600 text-white rounded-xl font-black text-sm hover:bg-emerald-700 transition-all shadow-md shadow-emerald-100">업로드</button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-50">
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">최근 업로드 파일</p>
+                                <p className="text-sm font-black text-slate-700 truncate">{uploadHistory.target.filename}</p>
+                            </div>
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">최근 업로드 일시</p>
+                                <p className="text-sm font-black text-slate-700">{uploadHistory.target.time}</p>
+                            </div>
+                        </div>
+                        <p className="text-[10px] text-rose-500 font-black italic bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100">※ 파일 업로드 시 해당 년도월의 기존 목표가 자동으로 덮어씌워집니다.</p>
+                    </div>
                 </SettingCard>
             </div>
 
