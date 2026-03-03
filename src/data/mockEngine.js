@@ -185,7 +185,7 @@ export class SalesBI {
      * 팀별 데이터 집계 (1단계)
      */
     getAggregatedByTeam() {
-        const teams = [...new Set(this.target.map(r => r['영업팀']))];
+        const teams = [...new Set([...this.actual.map(r => r['영업팀']), ...this.target.map(r => r['영업팀'])])];
         const progressRate = (SETTINGS.currentBusinessDay / (SETTINGS.businessDays['2026-02'] || 20)) * 100;
 
         return teams.map(teamName => {
@@ -239,7 +239,7 @@ export class SalesBI {
      * 유형별 데이터 집계
      */
     getAggregatedByType() {
-        const types = [...new Set(this.target.map(r => r['품목유형']))];
+        const types = [...new Set([...this.actual.map(r => r['품목유형']), ...this.target.map(r => r['품목유형'])])];
         const progressRate = (SETTINGS.currentBusinessDay / (SETTINGS.businessDays['2026-02'] || 20)) * 100;
 
         return types.map(typeName => {
@@ -294,8 +294,9 @@ export class SalesBI {
      * 사원별 데이터 집계 (2단계)
      */
     getAggregatedBySalesperson(teamName) {
+        const actualList = teamName === 'all' ? this.actual : this.actual.filter(r => r['영업팀'] === teamName);
         const targetList = teamName === 'all' ? this.target : this.target.filter(r => r['영업팀'] === teamName);
-        const spsInTeam = [...new Set(targetList.map(r => r['영업사원명']))];
+        const spsInTeam = [...new Set([...actualList.map(r => r['영업사원명']), ...targetList.map(r => r['영업사원명'])])];
         const progressRate = (SETTINGS.currentBusinessDay / (SETTINGS.businessDays['2026-02'] || 20)) * 100;
 
         return spsInTeam.map(name => {
@@ -342,7 +343,9 @@ export class SalesBI {
      * 거래처별 데이터 집계 (3단계)
      */
     getAggregatedByCustomer(spName) {
-        const customersOfSp = [...new Set(this.target.filter(r => r['영업사원명'] === spName).map(r => r['거래처명']))];
+        const actualList = this.actual.filter(r => r['영업사원명'] === spName);
+        const targetList = this.target.filter(r => r['영업사원명'] === spName);
+        const customersOfSp = [...new Set([...actualList.map(r => r['거래처명']), ...targetList.map(r => r['거래처명'])])];
         const progressRate = (SETTINGS.currentBusinessDay / (SETTINGS.businessDays['2026-02'] || 20)) * 100;
 
         return customersOfSp.map(name => {

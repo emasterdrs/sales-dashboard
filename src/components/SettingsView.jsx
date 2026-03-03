@@ -872,10 +872,24 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
     // 파일 선택 상태
     const [selectedFiles, setSelectedFiles] = useState({ sales: null, target: null });
     // 최근 업로드 정보
-    const [uploadHistory, setUploadHistory] = useState({
-        sales: { filename: '-', time: '-' },
-        target: { filename: '-', time: '-' }
+    const [uploadHistory, setUploadHistory] = useState(() => {
+        try {
+            const saved = localStorage.getItem('dashboard_upload_history');
+            return saved ? JSON.parse(saved) : {
+                sales: { filename: '-', time: '-' },
+                target: { filename: '-', time: '-' }
+            };
+        } catch (e) {
+            return {
+                sales: { filename: '-', time: '-' },
+                target: { filename: '-', time: '-' }
+            };
+        }
     });
+
+    useEffect(() => {
+        localStorage.setItem('dashboard_upload_history', JSON.stringify(uploadHistory));
+    }, [uploadHistory]);
 
     const handleFileSelect = (e, type) => {
         const file = e.target.files[0];
