@@ -791,7 +791,7 @@ export default function App() {
                                         </div>
 
                                         {/* Performance Horizontal Chart (RIGHT - 2/5) */}
-                                        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm flex flex-col">
+                                        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm flex flex-col h-fit">
                                             <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                                                 <h3 className="text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                                                     <TrendingUp size={18} className="text-indigo-600" />
@@ -811,7 +811,7 @@ export default function App() {
                                                             angle={slicedChartData.length > 5 ? -15 : 0}
                                                             dx={slicedChartData.length > 5 ? -5 : 0}
                                                         />
-                                                        <YAxis hide domain={[0, Math.max(110, ...slicedChartData.map(d => d.achievement || 0))]} />
+                                                        <YAxis hide domain={[0, Math.min(200, Math.max(110, ...slicedChartData.map(d => d.achievement || 0)))]} />
                                                         <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', fontSize: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
 
                                                         <ReferenceLine
@@ -866,7 +866,7 @@ export default function App() {
 
                             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
                                 {/* Pie Chart for Composition Ratio - Full Width below or next to the bar chart */}
-                                <div className="xl:col-span-4 bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm flex flex-col mt-4">
+                                <div className="xl:col-span-4 bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm flex flex-col mt-4 h-fit">
                                     <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                                         <h3 className="text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                                             <PieChartIcon size={18} className="text-indigo-600" />
