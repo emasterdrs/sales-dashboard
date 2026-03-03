@@ -922,10 +922,9 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
             const dataset = generateFullDataset();
             data = type === 'sales' ? dataset.actual : dataset.target;
         } else {
-            // 빈 양식 (헤더만)
             if (type === 'sales') {
                 data = [{
-                    '년도월': '202601',
+                    '년도월': '202601(예시)',
                     '영업팀': '영업1팀',
                     '영업사원명': '홍길동',
                     '거래처코드': 'C001',
@@ -938,7 +937,7 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
                 }];
             } else {
                 data = [{
-                    '년도월': '202601',
+                    '년도월': '202601(예시)',
                     '영업팀': '영업1팀',
                     '영업사원명': '홍길동',
                     '거래처코드': 'C001',
@@ -976,14 +975,18 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
                     </div>
                     <div>
                         <h4 className="text-xl font-black text-slate-800 mb-3 tracking-tighter uppercase">Data Upload Master Guide</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mt-6">
+                        <ul className="space-y-2.5 text-[12px] text-slate-500 font-bold leading-relaxed">
+                            <li className="flex gap-2">• <span className="text-slate-700">작성 요령:</span> 다운로드한 양식의 <b>1행은 제목(헤더)</b>이며, <b>2행의 예시 데이터는 삭제하거나 실제 데이터로 덮어쓰기</b> 하여 작성해 주세요.</li>
+                            <li className="flex gap-2">• <span className="text-slate-700">시작 위치:</span> 실질적인 데이터는 2행부터 시작되어야 시스템이 누락 없이 읽어 들입니다.</li>
+                        </ul>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mt-6 pt-6 border-t border-slate-100">
                             <div>
                                 <h5 className="text-[13px] font-black text-indigo-600 mb-2 uppercase flex items-center gap-2">
                                     <Filter size={14} /> 매출 실적 업로드 가이드
                                 </h5>
                                 <ul className="space-y-2.5 text-[12px] text-slate-500 font-bold leading-relaxed">
                                     <li className="flex gap-2">• <span className="text-slate-700">전 항목 필수:</span> 유형, 거래처, 품목 정보가 모두 있어야 정밀한 분석이 가능합니다.</li>
-                                    <li className="flex gap-2">• <span className="text-slate-700">코드 우선 매칭:</span> 거래처명보다 '거래처코드'를 기준으로 집계됩니다. 코드가 같고 명칭이 다를 경우 최근 데이터 명칭이 반영될 수 있습니다.</li>
+                                    <li className="flex gap-2">• <span className="text-slate-700">코드 우선 매칭:</span> 거래처명보다 '거래처코드'를 기준으로 집계됩니다.</li>
                                     <li className="flex gap-2">• <span className="text-slate-700">기타 분류:</span> 등록되지 않은 팀/유형 명칭은 자동으로 '기타' 항목으로 분류되어 분석됩니다.</li>
                                 </ul>
                             </div>
@@ -992,9 +995,9 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
                                     <Target size={14} /> 목표 데이터 업로드 가이드 (선택적 배분)
                                 </h5>
                                 <ul className="space-y-2.5 text-[12px] text-slate-500 font-bold leading-relaxed">
-                                    <li className="flex gap-2">• <span className="text-slate-700">수준별 목표:</span> 사원까지만 관리하려면 거래처/유형을 비워두세요. (거래처별 목표 설정 시 정보 입력)</li>
+                                    <li className="flex gap-2">• <span className="text-slate-700">수준별 목표:</span> 사원까지만 관리하려면 거래처/유형을 비워두세요.</li>
                                     <li className="flex flex-wrap items-center gap-y-1">
-                                        <span className="mr-2">• <span className="text-slate-700">유연한 매칭:</span> 입력된 정보의 깊이에 따라 목표를 자동 합산합니다.</span>
+                                        <span className="mr-2">• <span className="text-slate-700">유연한 매칭:</span> 정보의 깊이에 따라 목표를 자동 합산합니다.</span>
                                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-black cursor-help relative group whitespace-nowrap border border-indigo-100 transition-colors hover:bg-indigo-600 hover:text-white">
                                             자세한 설명 <Info size={10} />
                                             <div className="absolute right-0 top-full mt-2 w-80 bg-slate-900 text-white p-4 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-[11px] border border-slate-700 text-left whitespace-normal">
@@ -1017,7 +1020,6 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
                                             </div>
                                         </span>
                                     </li>
-                                    <li className="flex gap-2">• <span className="text-slate-700">주의 사항:</span> '12345 와 같은 텍스트 코드 인식 형식도 시스템이 자동으로 정제하여 안전하게 처리합니다.</li>
                                 </ul>
                             </div>
                         </div>
@@ -1051,7 +1053,10 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
                     <button onClick={() => salesInputRef.current.click()} className="w-full py-16 border-2 border-dashed border-indigo-200 rounded-[32px] flex flex-col items-center justify-center hover:bg-indigo-50 transition-all group">
                         <Filter className="text-indigo-500 mb-4 group-hover:scale-110 transition-transform" size={40} />
                         <span className="text-lg font-black text-slate-800">엑셀/CSV 파일 선택</span>
-                        <span className="text-xs text-slate-400 font-bold mt-2">Duri Sales Master Format (.xlsx/.csv)</span>
+                        <p className="text-center mt-3">
+                            <span className="text-[10px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded font-black border border-rose-100 italic">주의: 1행(헤더) 유지, 2행 예시는 삭제 후 입력</span><br />
+                            <span className="text-[10px] text-slate-400 font-bold">Duri Sales Master Format (.xlsx/.csv)</span>
+                        </p>
                     </button>
                 </SettingCard>
 
@@ -1080,7 +1085,10 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
                     <button onClick={() => targetInputRef.current.click()} className="w-full py-16 border-2 border-dashed border-emerald-200 rounded-[32px] flex flex-col items-center justify-center hover:bg-emerald-50 transition-all group">
                         <Target className="text-emerald-500 mb-4 group-hover:scale-110 transition-transform" size={40} />
                         <span className="text-lg font-black text-slate-800">목표 파일 업로드</span>
-                        <span className="text-xs text-slate-400 font-bold mt-2">Duri Target Schema (.csv/.xlsx)</span>
+                        <p className="text-center mt-3">
+                            <span className="text-[10px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded font-black border border-rose-100 italic">주의: 1행(헤더) 유지, 2행 예시는 삭제 후 입력</span><br />
+                            <span className="text-[10px] text-slate-400 font-bold">Duri Target Schema (.csv/.xlsx)</span>
+                        </p>
                     </button>
                 </SettingCard>
             </div>
@@ -1094,7 +1102,7 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
                     전체 데이터 초기화
                 </button>
             </div>
-        </div>
+        </div >
     );
 }
 
