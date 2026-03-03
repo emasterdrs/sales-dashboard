@@ -302,7 +302,44 @@ export default function App() {
         return bi.getDrillDown(selectedMonth, currentView.level, currentView.id, nextLevel, mainTab, metricType, bizDayInfo);
     }, [path, bi, selectedMonth, currentView, mainTab, metricType, bizDayInfo]);
 
+    // 대안 A: 가독성 중심 데이터 요약 (Top 10 + 기타)
+    const slicedChartData = useMemo(() => {
+        if (!drillDownData || drillDownData.length <= 12) return drillDownData;
+
+        // 실적(actual) 순으로 정렬하여 상위 10개 추출
+        const sorted = [...drillDownData].sort((a, b) => (b.actual || 0) - (a.actual || 0));
+        const top10 = sorted.slice(0, 10);
+        const others = sorted.slice(10);
+
+        const otherSummary = others.reduce((acc, curr) => {
+            acc.actual += (curr.actual || 0);
+            acc.target += (curr.target || 0);
+            acc.weight += (curr.weight || 0);
+            acc.lastYear += (curr.lastYear || 0);
+            acc.lastMonth += (curr.lastMonth || 0);
+            acc.cumulativeActual += (curr.cumulativeActual || 0);
+            acc.cumulativeTarget += (curr.cumulativeTarget || 0);
+            return acc;
+        }, {
+            id: 'others_group',
+            name: `기타(${others.length}개)`,
+            actual: 0,
+            target: 0,
+            weight: 0,
+            lastYear: 0,
+            lastMonth: 0,
+            cumulativeActual: 0,
+            cumulativeTarget: 0
+        });
+
+        // 달성률 재계산
+        otherSummary.achievement = otherSummary.target > 0 ? (otherSummary.actual / otherSummary.target) * 100 : (otherSummary.actual > 0 ? 100 : 0);
+
+        return [...top10, otherSummary];
+    }, [drillDownData]);
+
     const handleDrillDown = (item) => {
+        if (item.id === 'others_group') return; // 기타 합계는 드릴다운 불가
         if (currentView.level === 'type' || currentView.level === 'item') return;
         const nextLevelMap = view === 'dashboard_type'
             ? { root: 'type' }
@@ -755,28 +792,66 @@ export default function App() {
 
                                         {/* Performance Horizontal Chart (RIGHT - 2/5) */}
                                         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm flex flex-col">
-                                            <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                                            <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                                                 <h3 className="text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                                                     <TrendingUp size={18} className="text-indigo-600" />
-                                                    달성률 시각화
+                                                    달성률 시각화 {drillDownData.length > 12 && <span className="text-[10px] font-bold text-slate-400 normal-case ml-2">(상위 10개 요약)</span>}
                                                 </h3>
                                             </div>
                                             <div className="p-4 flex-1 min-h-[340px]">
                                                 <ResponsiveContainer>
-                                                    <BarChart data={drillDownData} margin={{ left: -10, right: 10, top: 40, bottom: 0 }}>
+                                                    <BarChart data={slicedChartData} margin={{ left: -10, right: 10, top: 40, bottom: 0 }}>
                                                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 13, fontWeight: 900, fill: '#64748b' }} />
-                                                        <YAxis hide domain={[0, 110]} />
+                                                        <XAxis
+                                                            dataKey="name"
+                                                            axisLine={false}
+                                                            tickLine={false}
+                                                            tick={{ fontSize: 11, fontWeight: 900, fill: '#64748b' }}
+                                                            interval={0}
+                                                            angle={slicedChartData.length > 8 ? -15 : 0}
+                                                            dx={slicedChartData.length > 8 ? -10 : 0}
+                                                        />
+                                                        <YAxis hide domain={[0, Math.max(110, ...slicedChartData.map(d => d.achievement || 0))]} />
                                                         <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', fontSize: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
 
-                                                        <ReferenceLine y={100} stroke="#cbd5e1" strokeDasharray="3 3" label={{ position: 'top', value: '목표 (100%)', fill: '#94a3b8', fontSize: 12, fontWeight: 900 }} />
-                                                        <ReferenceLine y={summary.progressRate} stroke="#6366f1" strokeDasharray="5 5" strokeWidth={2} label={{ position: 'top', value: `진도율 (${summary.progressRate.toFixed(1)}%)`, fill: '#6366f1', fontSize: 12, fontWeight: 900 }} />
+                                                        <ReferenceLine
+                                                            y={100}
+                                                            stroke="#cbd5e1"
+                                                            strokeDasharray="3 3"
+                                                            label={{
+                                                                position: Math.abs(100 - summary.progressRate) < 5 ? 'insideTopRight' : 'top',
+                                                                value: '목표(100%)',
+                                                                fill: '#94a3b8',
+                                                                fontSize: 10,
+                                                                fontWeight: 900
+                                                            }}
+                                                        />
+                                                        <ReferenceLine
+                                                            y={summary.progressRate}
+                                                            stroke="#6366f1"
+                                                            strokeDasharray="5 5"
+                                                            strokeWidth={2}
+                                                            label={{
+                                                                position: 'top',
+                                                                value: `진도율(${summary.progressRate.toFixed(1)}%)`,
+                                                                fill: '#6366f1',
+                                                                fontSize: 10,
+                                                                fontWeight: 900
+                                                            }}
+                                                        />
 
-                                                        <Bar dataKey="achievement" radius={[10, 10, 0, 0]} barSize={40}>
-                                                            {drillDownData.map((e, i) => (
+                                                        <Bar dataKey="achievement" radius={[10, 10, 0, 0]} barSize={slicedChartData.length > 8 ? 25 : 40}>
+                                                            {slicedChartData.map((e, i) => (
                                                                 <Cell key={i} fill={TEAM_COLORS[e.name]?.main || CHART_COLORS[i % CHART_COLORS.length]} opacity={0.8} />
                                                             ))}
-                                                            <LabelList dataKey="achievement" position="top" formatter={(v) => `${v.toFixed(1)}%`} fontSize={13} fontWeight={900} fill="#475569" />
+                                                            <LabelList
+                                                                dataKey="achievement"
+                                                                position="top"
+                                                                formatter={(v) => slicedChartData.length > 10 ? '' : `${v.toFixed(1)}%`}
+                                                                fontSize={11}
+                                                                fontWeight={900}
+                                                                fill="#475569"
+                                                            />
                                                         </Bar>
                                                     </BarChart>
                                                 </ResponsiveContainer>
@@ -790,17 +865,17 @@ export default function App() {
                             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
                                 {/* Pie Chart for Composition Ratio - Full Width below or next to the bar chart */}
                                 <div className="xl:col-span-4 bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm flex flex-col mt-4">
-                                    <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                                    <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                                         <h3 className="text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                                             <PieChartIcon size={18} className="text-indigo-600" />
-                                            {view === 'dashboard_type' ? '유형별 구성비' : '팀별 구성비'}
+                                            {view === 'dashboard_type' ? '유형별 구성비' : '팀별 구성비'} {drillDownData.length > 12 && <span className="text-[10px] font-bold text-slate-400 normal-case ml-2">(상위 10개 요약)</span>}
                                         </h3>
                                     </div>
                                     <div className="p-4 flex-1 min-h-[400px]">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie
-                                                    data={drillDownData.filter(d => d.actual > 0)}
+                                                    data={slicedChartData.filter(d => d.actual > 0)}
                                                     dataKey="actual"
                                                     nameKey="name"
                                                     cx="50%"
@@ -809,16 +884,16 @@ export default function App() {
                                                     outerRadius={120}
                                                     paddingAngle={5}
                                                 >
-                                                    {drillDownData.filter(d => d.actual > 0).map((entry, index) => (
+                                                    {slicedChartData.filter(d => d.actual > 0).map((entry, index) => (
                                                         <Cell key={`cell-${index}`} fill={TEAM_COLORS[entry.name]?.main || CHART_COLORS[index % CHART_COLORS.length]} />
                                                     ))}
-                                                    <LabelList dataKey="name" position="outside" offset={20} stroke="none" fill="#475569" fontSize={13} fontWeight="bold" />
+                                                    <LabelList dataKey="name" position="outside" offset={20} stroke="none" fill="#475569" fontSize={11} fontWeight="bold" />
                                                 </Pie>
                                                 <Tooltip
-                                                    formatter={(value, name, props) => {
-                                                        const total = drillDownData.reduce((acc, curr) => acc + curr.actual, 0);
-                                                        const percent = ((value / total) * 100).toFixed(1);
-                                                        return [`${fCurrencyNoSuffix(value)} (${percent}%)`, name];
+                                                    formatter={(value) => {
+                                                        const total = drillDownData.reduce((acc, curr) => acc + (curr.actual || 0), 0);
+                                                        const percent = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+                                                        return [`${fCurrencyNoSuffix(value)} (${percent}%)`];
                                                     }}
                                                     contentStyle={{ borderRadius: '12px', fontSize: '13px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                                                 />

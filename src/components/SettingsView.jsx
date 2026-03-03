@@ -646,26 +646,27 @@ function OrganizationSubView({ setMasterData, masterData }) {
                                         <span className="text-[14px] text-slate-700 font-bold">{sp.name}</span>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-2 mt-3 md:mt-0">
-                                    <button onClick={(e) => { e.stopPropagation(); setSpEditName(sp.name); setEditingSpId(sp.id); }} className="text-[11px] font-bold px-3 py-1 rounded-md bg-slate-100 text-slate-500 hover:bg-indigo-100 hover:text-indigo-600">수정</button>
-                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteSp(sp.id); }} className="text-[11px] font-bold px-3 py-1 rounded-md bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600">삭제</button>
-                                    <div className="flex items-center border border-slate-200 rounded-md ml-2 overflow-hidden bg-slate-50">
-                                        <button
-                                            onClick={(e) => handleMoveSpUp(e, sp.id)}
-                                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white transition-colors border-r border-slate-200"
-                                            title="순서 위로 이동"
-                                        >
-                                            <ArrowUp size={14} strokeWidth={3} />
-                                        </button>
-                                        <button
-                                            onClick={(e) => handleMoveSpDown(e, sp.id)}
-                                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white transition-colors"
-                                            title="순서 아래로 이동"
-                                        >
-                                            <ArrowDown size={14} strokeWidth={3} />
-                                        </button>
+                                {editingSpId !== sp.id && (
+                                    <div className="flex items-center gap-2 mt-3 md:mt-0">
+                                        <button onClick={(e) => { e.stopPropagation(); setSpEditName(sp.name); setEditingSpId(sp.id); }} className="text-[11px] font-bold px-3 py-1 rounded-md bg-slate-100 text-slate-500 hover:bg-indigo-100 hover:text-indigo-600">수정</button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteSp(sp.id); }} className="text-[11px] font-bold px-3 py-1 rounded-md bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600">삭제</button>
+                                        <div className="flex items-center border border-slate-200 rounded-md ml-2 overflow-hidden bg-slate-50">
+                                            <button
+                                                onClick={(e) => handleMoveSpUp(e, sp.id)}
+                                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white transition-colors border-r border-slate-200"
+                                                title="순서 위로 이동"
+                                            >
+                                                <ArrowUp size={14} strokeWidth={3} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => handleMoveSpDown(e, sp.id)}
+                                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white transition-colors"
+                                                title="순서 아래로 이동"
+                                            >
+                                                <ArrowDown size={14} strokeWidth={3} />
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
                                 )}
                             </div>
                         ))}
