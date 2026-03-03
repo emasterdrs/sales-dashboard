@@ -53,10 +53,8 @@ export class SalesBI {
     /**
      * 핵심 KPI 계산 (전체 요약)
      */
-    getSummary(selectedMonth, level, id, mainTab, metricType) {
+    getSummary(selectedMonth, level, id, mainTab, metricType, bizDayInfo = { currentBusinessDay: 1, totalBusinessDays: 20 }) {
         const targetYM = selectedMonth.replace('-', '');
-        const currentYear = selectedMonth.split('-')[0];
-        const currentMonth = selectedMonth.split('-')[1];
 
         // 1. 기간 필터링 로직
         const filterByMonth = (data, ym) => data.filter(r => String(r['년도월']) === ym);
@@ -78,16 +76,13 @@ export class SalesBI {
         const getPrevMonthYM = (ym) => {
             let y = parseInt(ym.substring(0, 4));
             let m = parseInt(ym.substring(4, 6)) - 1;
-            if (m === 0) {
-                m = 12;
-                y -= 1;
-            }
+            if (m === 0) { m = 12; y -= 1; }
             return `${y}${String(m).padStart(2, '0')}`;
         };
 
         // 2. 레벨 필터링
-        let fullActual = this.actual;
-        let fullTarget = this.target;
+        let fullActual = this.actual || [];
+        let fullTarget = this.target || [];
 
         if (level === 'team') {
             fullActual = fullActual.filter(r => r['영업팀'] === id);
@@ -109,101 +104,79 @@ export class SalesBI {
         const cumTargetRows = filterByYearToMonth(fullTarget, targetYM);
 
         // 3. 값 집계함수
-        const sum = (rows, field) => rows.reduce((acc, r) => acc + (r[field] || 0), 0);
+        const sumVal = (rows, field) => rows.reduce((acc, r) => acc + (parseFloat(r[field]) || 0), 0);
 
-        const actualAmt = sum(currentActualRows, '매출금액');
-        const targetAmt = sum(currentTargetRows, '목표금액');
-        const lyAmt = sum(prevYearActualRows, '매출금액');
-        const lmAmt = sum(prevMonthActualRows, '매출금액');
-        const cumActualAmt = sum(cumActualRows, '매출금액');
-        const cumTargetAmt = sum(cumTargetRows, '목표금액');
+        const actualAmt = sumVal(currentActualRows, '매출금액');
+        const targetAmt = sumVal(currentTargetRows, '목표금액');
+        const lyAmt = sumVal(prevYearActualRows, '매출금액');
+        const lmAmt = sumVal(prevMonthActualRows, '매출금액');
+        const cumActualAmt = sumVal(cumActualRows, '매출금액');
+        const cumTargetAmt = sumVal(cumTargetRows, '목표금액');
 
-        const actualWeight = sum(currentActualRows, '중량(KG)');
-        const lyWeight = sum(prevYearActualRows, '중량(KG)');
-        const lmWeight = sum(prevMonthActualRows, '중량(KG)');
-        const cumActualWeight = sum(cumActualRows, '중량(KG)');
+        const actualWeight = sumVal(currentActualRows, '중량(KG)');
+        const lyWeight = sumVal(prevYearActualRows, '중량(KG)');
+        const lmWeight = sumVal(prevMonthActualRows, '중량(KG)');
+        const cumActualWeight = sumVal(cumActualRows, '중량(KG)');
 
         // 4. 메트릭 변환
         const isAmt = metricType === 'amount';
-        let currentActual = isAmt ? actualAmt : actualWeight;
-        const businessDays = SETTINGS.businessDays[selectedMonth] || 20;
-        const currentBizDay = Math.max(1, SETTINGS.currentBusinessDay);
+        let currentActualTotal = isAmt ? actualAmt : actualWeight;
+        const businessDays = bizDayInfo.totalBusinessDays || 20;
+        const currentBizDay = Math.max(1, bizDayInfo.currentBusinessDay);
 
         if (mainTab === 'expected') {
-            currentActual = (currentActual / currentBizDay) * businessDays;
+            currentActualTotal = (currentActualTotal / currentBizDay) * businessDays;
         }
 
-        const currentTarget = isAmt ? targetAmt : (targetAmt / 4500); // 중량 목표는 시뮬레이션
-        const currentLastYear = isAmt ? lyAmt : lyWeight;
-        const currentLastMonth = isAmt ? lmAmt : lmWeight;
-        const cumulativeActual = isAmt ? cumActualAmt : cumActualWeight;
-        const cumulativeTarget = isAmt ? cumTargetAmt : (cumTargetAmt / 4500);
+        const currentTargetTotal = isAmt ? targetAmt : (targetAmt / 4500);
+        const currentLastYearTotal = isAmt ? lyAmt : lyWeight;
+        const currentLastMonthTotal = isAmt ? lmAmt : lmWeight;
+        const cumulativeActualTotal = isAmt ? cumActualAmt : cumActualWeight;
+        const cumulativeTargetTotal = isAmt ? cumTargetAmt : (cumTargetAmt / 4500);
 
-        const achievementRate = currentTarget > 0 ? (currentActual / currentTarget) * 100 : (currentActual > 0 ? 100 : 0);
-        const progressRate = (SETTINGS.currentBusinessDay / businessDays) * 100;
-        const progressAdjustedTarget = currentTarget * (progressRate / 100);
-        const overShort = mainTab === 'expected' ? (currentActual - currentTarget) : (currentActual - progressAdjustedTarget);
+        const achievementRate = currentTargetTotal > 0 ? (currentActualTotal / currentTargetTotal) * 100 : (currentActualTotal > 0 ? 100 : 0);
+        const progressRateCurrent = (bizDayInfo.currentBusinessDay / businessDays) * 100;
+        const progressAdjustedTargetTotal = currentTargetTotal * (progressRateCurrent / 100);
+        const overShortVal = mainTab === 'expected' ? (currentActualTotal - currentTargetTotal) : (currentActualTotal - progressAdjustedTargetTotal);
 
         return {
-            actual: currentActual,
-            target: currentTarget,
+            actual: currentActualTotal,
+            target: currentTargetTotal,
             achievementRate,
-            progressRate,
-            progressGap: achievementRate - (mainTab === 'expected' ? 100 : progressRate),
-            overShort,
-            lastYearActual: currentLastYear,
-            lastMonthActual: currentLastMonth,
-            yoyGrowth: currentLastYear > 0 ? ((currentActual - currentLastYear) / currentLastYear) * 100 : 0,
-            momGrowth: currentLastMonth > 0 ? ((currentActual - currentLastMonth) / currentLastMonth) * 100 : 0,
-            cumulativeActual,
-            cumulativeTarget,
-            cumulativeAchievement: cumulativeTarget > 0 ? (cumulativeActual / cumulativeTarget) * 100 : (cumulativeActual > 0 ? 100 : 0),
-            forecast: (currentActual / currentBizDay) * businessDays
+            progressRate: progressRateCurrent,
+            progressGap: achievementRate - (mainTab === 'expected' ? 100 : progressRateCurrent),
+            overShort: overShortVal,
+            lastYearActual: currentLastYearTotal,
+            lastMonthActual: currentLastMonthTotal,
+            yoyGrowth: currentLastYearTotal > 0 ? ((currentActualTotal - currentLastYearTotal) / currentLastYearTotal) * 100 : 0,
+            momGrowth: currentLastMonthTotal > 0 ? ((currentActualTotal - currentLastMonthTotal) / currentLastMonthTotal) * 100 : 0,
+            cumulativeActual: cumulativeActualTotal,
+            cumulativeTarget: cumulativeTargetTotal,
+            cumulativeAchievement: cumulativeTargetTotal > 0 ? (cumulativeActualTotal / cumulativeTargetTotal) * 100 : (cumulativeActualTotal > 0 ? 100 : 0),
+            forecast: (currentActualTotal / currentBizDay) * businessDays
         };
     }
 
     /**
      * 드릴다운 데이터 집계
      */
-    getDrillDown(selectedMonth, level, id, nextLevel, mainTab, metricType) {
-        const businessDays = SETTINGS.businessDays[selectedMonth] || 20;
-        const progressRate = (SETTINGS.currentBusinessDay / businessDays) * 100;
+    getDrillDown(selectedMonth, level, id, nextLevel, mainTab, metricType, bizDayInfo = { currentBusinessDay: 1, totalBusinessDays: 20 }) {
+        const progressRate = (bizDayInfo.currentBusinessDay / (bizDayInfo.totalBusinessDays || 20)) * 100;
         const targetYM = selectedMonth.replace('-', '');
-
-        // 연도 및 월 보조 함수
-        const getYestYearYM = (ym) => {
-            const y = parseInt(ym.substring(0, 4)) - 1;
-            const m = ym.substring(4, 6);
-            return `${y}${m}`;
-        };
-        const getPrevMonthYM = (ym) => {
-            let y = parseInt(ym.substring(0, 4));
-            let m = parseInt(ym.substring(4, 6)) - 1;
-            if (m === 0) { m = 12; y -= 1; }
-            return `${y}${String(m).padStart(2, '0')}`;
-        };
-        const filterByYearToMonth = (data, ym) => {
-            const y = ym.substring(0, 4);
-            const m = ym.substring(4, 6);
-            return data.filter(r => {
-                const rYM = String(r['년도월']);
-                return rYM.startsWith(y) && rYM.substring(4, 6) <= m;
-            });
-        };
 
         let data = [];
         if (nextLevel === 'team') {
-            data = this.getAggregatedData(this.actual, this.target, '영업팀', targetYM);
+            data = this.getAggregatedData(this.actual, this.target, '영업팀', targetYM, bizDayInfo);
         } else if (nextLevel === 'type') {
-            data = this.getAggregatedData(this.actual, this.target, '품목유형', targetYM);
+            data = this.getAggregatedData(this.actual, this.target, '품목유형', targetYM, bizDayInfo);
         } else if (nextLevel === 'person') {
             const filteredActual = id === 'all' ? this.actual : this.actual.filter(r => r['영업팀'] === id);
             const filteredTarget = id === 'all' ? this.target : this.target.filter(r => r['영업팀'] === id);
-            data = this.getAggregatedData(filteredActual, filteredTarget, '영업사원명', targetYM);
+            data = this.getAggregatedData(filteredActual, filteredTarget, '영업사원명', targetYM, bizDayInfo);
         } else if (nextLevel === 'customer') {
             const filteredActual = this.actual.filter(r => r['영업사원명'] === id);
             const filteredTarget = this.target.filter(r => r['영업사원명'] === id);
-            data = this.getAggregatedData(filteredActual, filteredTarget, '거래처명', targetYM);
+            data = this.getAggregatedData(filteredActual, filteredTarget, '거래처명', targetYM, bizDayInfo);
         }
 
         return data.map(d => this._mapMetric(d, metricType, mainTab, progressRate));
@@ -212,10 +185,10 @@ export class SalesBI {
     /**
      * 범용 집계 함수 (중량/금액/전년/전월/누계 모두 포함)
      */
-    getAggregatedData(actualData, targetData, keyField, targetYM) {
+    getAggregatedData(actualData, targetData, keyField, targetYM, bizDayInfo) {
         const keys = [...new Set([...actualData.map(r => r[keyField]), ...targetData.map(r => r[keyField])])];
-        const currentBizDay = Math.max(1, SETTINGS.currentBusinessDay);
-        const businessDays = SETTINGS.businessDays[SETTINGS.selectedMonth] || 20;
+        const currentBizDay = Math.max(1, bizDayInfo.currentBusinessDay);
+        const businessDays = bizDayInfo.totalBusinessDays || 20;
 
         const getYestYearYM = (ym) => {
             const y = parseInt(ym.substring(0, 4)) - 1;
@@ -228,35 +201,39 @@ export class SalesBI {
             if (m === 0) { m = 12; y -= 1; }
             return `${y}${String(m).padStart(2, '0')}`;
         };
-        const filterByYearToMonth = (data, ym) => {
+        const filterByYearToMonthArr = (arr, ym) => {
             const y = ym.substring(0, 4);
             const m = ym.substring(4, 6);
-            return data.filter(r => {
+            return arr.filter(r => {
                 const rYM = String(r['년도월']);
                 return rYM.startsWith(y) && rYM.substring(4, 6) <= m;
             });
         };
 
-        return keys.map(key => {
-            const currentActual = actualData.filter(r => r[keyField] === key && String(r['년도월']) === targetYM);
-            const currentTarget = targetData.filter(r => r[keyField] === key && String(r['년도월']) === targetYM);
-            const prevYearActual = actualData.filter(r => r[keyField] === key && String(r['년도월']) === getYestYearYM(targetYM));
-            const prevMonthActual = actualData.filter(r => r[keyField] === key && String(r['년도월']) === getPrevMonthYM(targetYM));
-            const cumActualRows = filterByYearToMonth(actualData.filter(r => r[keyField] === key), targetYM);
-            const cumTargetRows = filterByYearToMonth(targetData.filter(r => r[keyField] === key), targetYM);
+        const sumVal = (rows, field) => rows.reduce((acc, r) => acc + (parseFloat(r[field]) || 0), 0);
 
-            const sum = (rows, field) => rows.reduce((acc, r) => acc + (r[field] || 0), 0);
+        return keys.filter(k => k).map(key => {
+            const currentActualRows = actualData.filter(r => r[keyField] === key && String(r['년도월']) === targetYM);
+            const currentTargetRows = targetData.filter(r => r[keyField] === key && String(r['년도월']) === targetYM);
+            const prevYearActualRows = actualData.filter(r => r[keyField] === key && String(r['년도월']) === getYestYearYM(targetYM));
+            const prevMonthActualRows = actualData.filter(r => r[keyField] === key && String(r['년도월']) === getPrevMonthYM(targetYM));
 
-            const actualAmt = sum(currentActual, '매출금액');
-            const targetAmt = sum(currentTarget, '목표금액');
-            const lyAmt = sum(prevYearActual, '매출금액');
-            const lmAmt = sum(prevMonthActual, '매출금액');
-            const weight = sum(currentActual, '중량(KG)');
-            const lyWeight = sum(prevYearActual, '중량(KG)');
-            const lmWeight = sum(prevMonthActual, '중량(KG)');
-            const cumActualAmt = sum(cumActualRows, '매출금액');
-            const cumTargetAmt = sum(cumTargetRows, '목표금액');
-            const cumWeight = sum(cumActualRows, '중량(KG)');
+            const spActualRows = actualData.filter(r => r[keyField] === key);
+            const spTargetRows = targetData.filter(r => r[keyField] === key);
+
+            const cumActualRows = filterByYearToMonthArr(spActualRows, targetYM);
+            const cumTargetRows = filterByYearToMonthArr(spTargetRows, targetYM);
+
+            const actualAmt = sumVal(currentActualRows, '매출금액');
+            const targetAmt = sumVal(currentTargetRows, '목표금액');
+            const lyAmt = sumVal(prevYearActualRows, '매출금액');
+            const lmAmt = sumVal(prevMonthActualRows, '매출금액');
+            const weight = sumVal(currentActualRows, '중량(KG)');
+            const lyWeight = sumVal(prevYearActualRows, '중량(KG)');
+            const lmWeight = sumVal(prevMonthActualRows, '중량(KG)');
+            const cumActualAmt = sumVal(cumActualRows, '매출금액');
+            const cumTargetAmt = sumVal(cumTargetRows, '목표금액');
+            const cumWeight = sumVal(cumActualRows, '중량(KG)');
 
             return {
                 id: key,

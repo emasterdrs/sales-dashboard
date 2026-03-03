@@ -246,10 +246,12 @@ export default function App() {
         return { currentBusinessDay, totalBusinessDays };
     }, [selectedMonth]);
 
-    // 전역 설정 연동
-    SETTINGS.currentBusinessDay = bizDayInfo.currentBusinessDay || 1;
-    SETTINGS.businessDays[selectedMonth] = bizDayInfo.totalBusinessDays;
-    SETTINGS.selectedMonth = selectedMonth;
+    // 전역 설정 연동 (Legacy 지원용으로 남겨두되 가급적 파라미터 전달 권장)
+    useEffect(() => {
+        SETTINGS.currentBusinessDay = bizDayInfo.currentBusinessDay || 1;
+        SETTINGS.businessDays[selectedMonth] = bizDayInfo.totalBusinessDays;
+        SETTINGS.selectedMonth = selectedMonth;
+    }, [bizDayInfo, selectedMonth]);
 
     const fMetric = (val) => {
         if (val === undefined || val === null) return '0';
@@ -289,14 +291,14 @@ export default function App() {
     const currentView = path[path.length - 1];
 
     const summary = useMemo(() => {
-        return bi.getSummary(selectedMonth, currentView.level, currentView.id, mainTab, metricType);
-    }, [bi, selectedMonth, currentView, mainTab, metricType]);
+        return bi.getSummary(selectedMonth, currentView.level, currentView.id, mainTab, metricType, bizDayInfo);
+    }, [bi, selectedMonth, currentView, mainTab, metricType, bizDayInfo]);
 
     const drillDownData = useMemo(() => {
         const nextLevelMap = view === 'dashboard_type' ? { root: 'type', type: 'type' } : { root: 'team', team: 'person', person: 'person' };
         const nextLevel = nextLevelMap[currentView.level];
-        return bi.getDrillDown(selectedMonth, currentView.level, currentView.id, nextLevel, mainTab, metricType);
-    }, [path, bi, selectedMonth, currentView, mainTab, metricType]);
+        return bi.getDrillDown(selectedMonth, currentView.level, currentView.id, nextLevel, mainTab, metricType, bizDayInfo);
+    }, [path, bi, selectedMonth, currentView, mainTab, metricType, bizDayInfo]);
 
     const handleDrillDown = (item) => {
         if (currentView.level === 'person' || currentView.level === 'type') return; // If we want drilldown for type, we can add it later. For now, stop at 'type' level similarly to 'person'. Wait, type currently has no drilldown.
