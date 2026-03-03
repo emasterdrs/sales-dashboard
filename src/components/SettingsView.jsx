@@ -3,7 +3,7 @@ import {
     Settings, Calendar as CalendarIcon, Users, Package, Building2,
     Filter, Upload, ChevronRight, Save, Target, Type, Globe,
     Info, CheckCircle2, AlertCircle, ChevronDown, CalendarDays,
-    ArrowRight, ArrowUp, ArrowDown
+    ArrowRight, ArrowUp, ArrowDown, Zap
 } from 'lucide-react';
 import { SETTINGS } from '../data/mockEngine';
 import { calculateBusinessDays, calculateCurrentBusinessDay, getYearlyCalendarData } from '../lib/dateUtils';
@@ -880,7 +880,21 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
                 const wb = window.XLSX.read(bstr, { type: 'binary' });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
-                const data = window.XLSX.utils.sheet_to_json(ws);
+                let data = window.XLSX.utils.sheet_to_json(ws);
+
+                // 데이터 정제 로직 (트리밍 및 문자열화)
+                data = data.map(item => {
+                    const newItem = { ...item };
+                    // 코드 및 명칭 필드 정제
+                    const fieldsToClean = ['영업팀', '영업사원명', '거래처코드', '거래처명', '품목유형', '품목코드', '품목명'];
+                    fieldsToClean.forEach(f => {
+                        if (newItem[f] !== undefined && newItem[f] !== null) {
+                            // '12345 와 같이 숫자가 아닌 문자열로 인식되도록 처리된 경우도 깨끗하게 문자열로 변환
+                            newItem[f] = String(newItem[f]).trim();
+                        }
+                    });
+                    return newItem;
+                });
 
                 setMasterData(prev => {
                     const newData = { ...prev };
@@ -955,22 +969,35 @@ function DataUploadSubView({ setMasterData, setLastUpdated }) {
 
     return (
         <div className="space-y-8">
-            <div className="bg-indigo-50/50 border border-indigo-100 rounded-[20px] p-6 mb-8">
-                <div className="flex items-start gap-4">
-                    <div className="p-2.5 bg-indigo-500 text-white rounded-lg shadow-sm">
-                        <Zap size={18} />
+            <div className="bg-white border-2 border-indigo-100 rounded-[32px] p-8 mb-8 shadow-sm">
+                <div className="flex items-start gap-5">
+                    <div className="p-4 bg-indigo-500 text-white rounded-2xl shadow-lg ring-4 ring-indigo-50">
+                        <Zap size={24} />
                     </div>
                     <div>
-                        <h4 className="text-sm font-black text-slate-800 mb-1">파일 업로드 및 목표 배분 가이드</h4>
-                        <p className="text-[12px] font-bold text-slate-500 leading-relaxed mb-3">
-                            <b>매출 실적:</b> 전 항목(유형, 거래처, 품목 등)이 정확히 입력되어야 구체적인 분석이 가능합니다.<br />
-                            <b>목표 데이터:</b> 선택적 목표 배분이 가능합니다. 관리 수준에 따라 배분 깊이를 조절하세요.
-                        </p>
-                        <ul className="text-[11px] text-indigo-600 font-black space-y-1">
-                            <li>• 사원별 총량 목표만 설정: 년도월, 영업팀, 영업사원명만 기입 (거래처/유형 공란)</li>
-                            <li>• 거래처별 목표 설정: 거래처코드, 거래처명 추가 기입</li>
-                            <li>• 유형별 목표 설정: 품목 유형(새 유형1~6) 추가 기입</li>
-                        </ul>
+                        <h4 className="text-xl font-black text-slate-800 mb-3 tracking-tighter uppercase">Data Upload Master Guide</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mt-6">
+                            <div>
+                                <h5 className="text-[13px] font-black text-indigo-600 mb-2 uppercase flex items-center gap-2">
+                                    <Filter size={14} /> 매출 실적 업로드 가이드
+                                </h5>
+                                <ul className="space-y-2.5 text-[12px] text-slate-500 font-bold leading-relaxed">
+                                    <li className="flex gap-2">• <span className="text-slate-700">전 항목 필수:</span> 유형, 거래처, 품목 정보가 모두 있어야 정밀한 분석이 가능합니다.</li>
+                                    <li className="flex gap-2">• <span className="text-slate-700">코드 우선 매칭:</span> 거래처명보다 '거래처코드'를 기준으로 집계됩니다. 코드가 같고 명칭이 다를 경우 최근 데이터 명칭이 반영될 수 있습니다.</li>
+                                    <li className="flex gap-2">• <span className="text-slate-700">기타 분류:</span> 등록되지 않은 팀/유형 명칭은 자동으로 '기타' 항목으로 분류되어 분석됩니다.</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h5 className="text-[13px] font-black text-emerald-600 mb-2 uppercase flex items-center gap-2">
+                                    <Target size={14} /> 목표 데이터 업로드 가이드 (선택적 배분)
+                                </h5>
+                                <ul className="space-y-2.5 text-[12px] text-slate-500 font-bold leading-relaxed">
+                                    <li className="flex gap-2">• <span className="text-slate-700">수준별 목표:</span> 사원까지만 관리하려면 거래처/유형을 비워두세요. (거래처별 목표 설정 시 정보 입력)</li>
+                                    <li className="flex gap-2">• <span className="text-slate-700">유연한 매칭:</span> 입력된 정보의 깊이에 따라 시스템이 상위/하위 레벨 목표를 자동으로 합산하여 보여줍니다.</li>
+                                    <li className="flex gap-2">• <span className="text-slate-700">주의 사항:</span> '12345 와 같은 텍스트 코드 인식 형식도 시스템이 자동으로 정제하여 안전하게 처리합니다.</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
