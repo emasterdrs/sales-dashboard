@@ -150,7 +150,10 @@ function SidebarIcon({ icon: Icon, label, active, onClick, badge }) {
 
 export default function App() {
     // 1. All hooks at the top
-    const [selectedMonth, setSelectedMonth] = useState('2026-02');
+    const [selectedMonth, setSelectedMonth] = useState(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    });
     const [view, setView] = useState('dashboard_team');
     const [mainTab, setMainTab] = useState('current');
     const [analysisMode, setAnalysisMode] = useState('goal');
@@ -196,6 +199,31 @@ export default function App() {
         const min = String(now.getMinutes()).padStart(2, '0');
         return `${yyyy}년 ${mm}월 ${dd}일 ${hh}:${min}`;
     });
+
+    const [currentTime, setCurrentTime] = useState(() => {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        return `${yyyy}년 ${mm}월 ${dd}일 ${hh}:${min}:${ss}`;
+    });
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            setCurrentTime(`${yyyy}년 ${mm}월 ${dd}일 ${hh}:${min}:${ss}`);
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     const bizDayInfo = useMemo(() => {
         if (!selectedMonth || !selectedMonth.includes('-')) return { currentBusinessDay: 1, totalBusinessDays: 20 };
@@ -468,10 +496,10 @@ export default function App() {
                                     <Clock size={12} className="text-indigo-400" />
                                     최종 업데이트: {lastUpdated}
                                 </span>
-                                <button onClick={handleExport} className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white px-3 py-1.5 rounded-lg transition-all duration-300 border border-indigo-200 hover:border-indigo-600 ml-2 group">
-                                    <Download size={14} className="group-hover:animate-bounce" />
-                                    <span>엑셀 다운로드</span>
-                                </button>
+                                <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg border border-emerald-200 ml-2 group">
+                                    <Clock size={14} className="group-hover:animate-pulse" />
+                                    <span>현재 시간: {currentTime}</span>
+                                </div>
                             </div>
                         </div>
 
