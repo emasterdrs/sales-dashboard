@@ -53,6 +53,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { generateFullDataset, convertToCSV, downloadCSV } from './data/generateSalesData';
 import actualDataJson from './data/actual_data.json';
 import { TEAMS, SALESPERSONS, ALL_CUSTOMERS, ALL_PRODUCTS, PRODUCT_TYPES } from './data/foodDistributionData';
+import { SalesBI, SETTINGS } from './data/mockEngine';
 import { getYearlyCalendarData } from './lib/dateUtils';
 import { Quote } from './components/Quote';
 import { SettingsView } from './components/SettingsView';
