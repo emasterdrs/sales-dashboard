@@ -39,6 +39,7 @@ export const SALESPERSONS = [
 
 // 품목 유형명 설정
 export const TYPE_NAMES = ['새 유형1', '새 유형2', '새 유형3', '새 유형4', '새 유형5', '새 유형6'];
+export const PRODUCT_TYPES = TYPE_NAMES; // 호환성을 위해 추가
 
 // 1500개 품목 생성
 const generateProducts = () => {
