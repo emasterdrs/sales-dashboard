@@ -156,7 +156,13 @@ export default function App() {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     });
-    const [view, setView] = useState('dashboard_team');
+    const [view, setView] = useState(() => {
+        return localStorage.getItem('dashboard_view') || 'dashboard_team';
+    });
+    useEffect(() => {
+        localStorage.setItem('dashboard_view', view);
+    }, [view]);
+
     const [mainTab, setMainTab] = useState('current');
     const [analysisMode, setAnalysisMode] = useState('goal');
     const [metricType, setMetricType] = useState('amount');
@@ -175,7 +181,6 @@ export default function App() {
             const saved = localStorage.getItem('dashboard_users');
             if (saved) {
                 const parsed = JSON.parse(saved);
-                // Force update admin password to 123123 if requested
                 const adminIdx = parsed.findIndex(u => u.id === 'admin');
                 if (adminIdx !== -1) {
                     parsed[adminIdx].pw = '123123';
@@ -193,50 +198,54 @@ export default function App() {
         } catch (e) { }
     }, [users]);
 
-    const [loggedInUser, setLoggedInUser] = useState(null);
+    const [loggedInUser, setLoggedInUser] = useState(() => {
+        try {
+            const saved = localStorage.getItem('dashboard_logged_in_user');
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) { return null; }
+    });
+
+    useEffect(() => {
+        if (loggedInUser) {
+            localStorage.setItem('dashboard_logged_in_user', JSON.stringify(loggedInUser));
+        } else {
+            localStorage.removeItem('dashboard_logged_in_user');
+        }
+    }, [loggedInUser]);
+
     const [loginId, setLoginId] = useState('');
     const [loginPw, setLoginPw] = useState('');
+
     const [masterData, setMasterData] = useState(() => {
-        // 1. Initial empty state
-        let currentMaster = { actual: [], target: [], bonds: [] };
+        // Source of truth: JSON file (Synced from local computer)
+        const jsonContent = actualDataJson || { actual: [], target: [], bonds: [] };
 
-        // 2. Load sync'd data from actual_data.json (High Priority)
-        if (actualDataJson) {
-            if (actualDataJson.actual) currentMaster.actual = actualDataJson.actual;
-            if (actualDataJson.target) currentMaster.target = actualDataJson.target;
-            if (actualDataJson.bonds) currentMaster.bonds = actualDataJson.bonds;
-        }
-
-        // 3. Fallback to localStorage if available (User edits/temporary state)
+        // Load sync'd data preference
         try {
+            // Priority 1: JSON Data (Official source)
+            // Even if empty, it should overwrite cache if it was explicitly updated.
             const saved = localStorage.getItem('dashboard_master_data');
             if (saved) {
-                const parsed = JSON.parse(saved);
-                // Only use localStorage if it has data and we don't have fresh JSON data
-                // Or merge them? Let's prioritize fresh JSON sync for 'actual' data.
-                if (currentMaster.actual.length === 0 && parsed.actual) {
-                    currentMaster.actual = parsed.actual;
+                const cached = JSON.parse(saved);
+                // IF JSON has data, it ALWAYS wins.
+                // IF JSON is empty and cache has data... but JSON's lastSync is newer or explicit...
+                // Better strategy: Use JSON always if it's there.
+                if (jsonContent.actual && jsonContent.actual.length > 0) {
+                    return jsonContent;
                 }
-                if (currentMaster.target.length === 0 && parsed.target) {
-                    currentMaster.target = parsed.target;
+                // If JSON is empty (recently initialized), we should probably clear cache too.
+                // We detect explicitly empty by checking actual exists but length is 0.
+                if (jsonContent.actual && jsonContent.actual.length === 0 && jsonContent.lastSync === "") {
+                    // This is our 'fresh start' flag. Clear everything.
+                    localStorage.removeItem('dashboard_master_data');
+                    return { actual: [], target: [], bonds: [] };
                 }
-                if (currentMaster.bonds.length === 0 && parsed.bonds) {
-                    currentMaster.bonds = parsed.bonds;
-                }
+                return cached;
             }
         } catch (e) {
-            console.warn('Failed to load master data from localStorage', e);
+            console.warn('Failed to load master data state', e);
         }
-
-        // 4. If EVERYTHING is still empty, ONLY then generate mock data for first-time demo
-        // But since the user asked for "initialization", we'll skip the auto-generation 
-        // if they want to start from zero.
-        if (currentMaster.actual.length === 0 && currentMaster.target.length === 0) {
-            // return generateFullDataset(); // Uncomment if you want auto-mocking
-            return { actual: [], target: [], bonds: [] };
-        }
-
-        return currentMaster;
+        return jsonContent;
     });
 
     useEffect(() => {
