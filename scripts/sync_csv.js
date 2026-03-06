@@ -6,14 +6,14 @@ import * as XLSX from 'xlsx';
 const PUBLIC_DIR = './public';
 const OUTPUT_FILE = './src/data/actual_data.json';
 
-// Helper: Excel 또는 CSV 읽어서 JSON 배열로 반환
+// Helper: Read Excel or CSV and return as JSON array
 function readDataToJSON(filePath) {
     try {
         const ext = path.extname(filePath).toLowerCase();
 
         if (ext === '.xlsx' || ext === '.xls') {
             const workbook = XLSX.readFile(filePath);
-            const sheetName = workbook.SheetNames[0]; // 첫 번째 시트 사용
+            const sheetName = workbook.SheetNames[0]; // Use first sheet
             const worksheet = workbook.Sheets[sheetName];
             return XLSX.utils.sheet_to_json(worksheet);
         } else if (ext === '.csv') {
@@ -21,7 +21,6 @@ function readDataToJSON(filePath) {
             const lines = content.split('\n').filter(l => l.trim());
             if (lines.length === 0) return [];
 
-            // BOM 제거 (있는 경우)
             const cleanHeader = lines[0].replace(/^\uFEFF/, '');
             const headers = cleanHeader.split(',').map(h => h.trim());
             const data = [];
@@ -44,7 +43,7 @@ function readDataToJSON(filePath) {
 }
 
 function sync() {
-    console.log('Syncing Yearly Excel/CSV files to Dashboard JSON...');
+    console.log('Syncing Professional Excel/CSV files to Dashboard JSON...');
 
     if (!fs.existsSync(PUBLIC_DIR)) {
         console.error('Public directory not found.');
@@ -52,7 +51,6 @@ function sync() {
     }
 
     const files = fs.readdirSync(PUBLIC_DIR);
-    // 판매데이터_ 로 시작하는 csv, xlsx, xls 파일 모두 찾기
     const salesFiles = files.filter(f =>
         (f.startsWith('판매데이터') || f.startsWith('Sales')) &&
         (f.endsWith('.csv') || f.endsWith('.xlsx') || f.endsWith('.xls'))
@@ -66,7 +64,8 @@ function sync() {
         const data = readDataToJSON(filePath);
 
         const mapped = data.map(r => {
-            let rawTeam = String(r['팀'] || r['Team'] || '기타');
+            // Team name normalization
+            let rawTeam = String(r['영업팀'] || r['팀'] || '기타');
             let teamName = rawTeam;
             if (rawTeam.match(/^\d/)) {
                 teamName = `영업${rawTeam}`;
@@ -74,35 +73,31 @@ function sync() {
                 teamName = `영업${rawTeam}`;
             }
 
-            const dateVal = r['거래일자'] || r['Date'] || '';
-            const ym = String(dateVal).replace(/-/g, '').substring(0, 6);
+            // YearMonth parsing
+            let ym = String(r['년도월'] || '').replace(/-/g, '').substring(0, 6);
+            if (!ym && r['거래일자']) {
+                ym = String(r['거래일자']).replace(/-/g, '').substring(0, 6);
+            }
 
             return {
                 '년도월': ym,
                 '영업팀': teamName,
-                '영업사원명': r['영업사원명'] || r['Salesperson'] || '기타',
-                '거래처코드': r['거래처ID'] || r['CustomerID'] || '',
+                '영업사원명': r['영업사원'] || r['영업사원명'] || '기타',
+                '거래처코드': r['거래처코드'] || r['거래처ID'] || '',
                 '거래처명': r['거래처명'] || r['CustomerName'] || '',
-                '품목유형': r['품목유형'] || r['Type'] || '기타',
-                '품목코드': r['품목ID'] || r['ItemID'] || '',
-                '품목명': r['품목명'] || r['ItemName'] || '',
-                '매출금액': parseFloat(r['금액'] || r['Amount']) || 0,
-                '중량(KG)': parseFloat(r['수량'] || r['Quantity']) || 0
+                '품목유형': r['유형명'] || r['품목유형'] || '기타',
+                '품목코드': r['품목코드'] || r['품목ID'] || '',
+                '품목명': r['품목명'] || '',
+                '매출금액': parseFloat(r['매출액'] || r['금액'] || r['Amount']) || 0,
+                '중량(KG)': parseFloat(r['중량(kg)'] || r['중량(KG)'] || r['수량'] || r['Quantity']) || 0
             };
         });
         allActual = allActual.concat(mapped);
     });
 
-    // 채권 데이터 처리 (Excel/CSV 공용)
-    const bondFile = files.find(f => (f.includes('채권') || f.includes('Receivable')) && (f.endsWith('.csv') || f.endsWith('.xlsx')));
-    let bonds = [];
-    if (bondFile) {
-        bonds = readDataToJSON(path.join(PUBLIC_DIR, bondFile));
-    }
-
     const result = {
         actual: allActual,
-        bonds: bonds,
+        bonds: [], // Initializing bonds to empty
         lastSync: new Date().toISOString()
     };
 

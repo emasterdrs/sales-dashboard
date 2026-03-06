@@ -1062,9 +1062,13 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
         }
 
         const csv = convertToCSV(data);
-        const filename = mode === 'example'
-            ? (type === 'sales' ? 'Sales_Data_Example.csv' : 'Target_Data_Example.csv')
-            : (type === 'sales' ? 'Sales_Upload_Form.csv' : 'Target_Upload_Form.csv');
+        let filename = '';
+        if (mode === 'example') {
+            filename = type === 'sales' ? '판매데이터_2025.csv' : 'Target_Data_Example.csv';
+        } else {
+            const currentYear = new Date().getFullYear();
+            filename = type === 'sales' ? `판매데이터_${currentYear}.csv` : `Target_Upload_Form_${currentYear}.csv`;
+        }
         downloadCSV(csv, filename);
     };
 
@@ -1095,12 +1099,13 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mt-6 pt-6 border-t border-slate-100">
                             <div>
                                 <h5 className="text-[13px] font-black text-indigo-600 mb-2 uppercase flex items-center gap-2">
-                                    <Filter size={14} /> 매출 실적 업로드 가이드
+                                    <Filter size={14} /> 매출 실적 업로드 가이드 (표준 양식)
                                 </h5>
                                 <ul className="space-y-2.5 text-[12px] text-slate-500 font-bold leading-relaxed">
-                                    <li className="flex gap-2">• <span className="text-slate-700">전 항목 필수:</span> 유형, 거래처, 품목 정보가 모두 있어야 정밀한 분석이 가능합니다.</li>
-                                    <li className="flex gap-2">• <span className="text-slate-700">코드 우선 매칭:</span> 거래처명보다 '거래처코드'를 기준으로 집계됩니다.</li>
-                                    <li className="flex gap-2">• <span className="text-slate-700">기타 분류:</span> 등록되지 않은 팀/유형 명칭은 자동으로 '기타' 항목으로 분류되어 분석됩니다.</li>
+                                    <li className="flex gap-2">• <span className="text-slate-700">필수 항목:</span> 년도월(YYYYMM), 영업팀, 영업사원, 매출액, 중량(kg)은 반드시 포함되어야 합니다.</li>
+                                    <li className="flex gap-2">• <span className="text-slate-700">분석 항목:</span> 거래처코드/명, 품목코드/명, 유형명, 단위, 중량, 입수 등을 입력하면 더 정밀한 분석이 가능합니다.</li>
+                                    <li className="flex gap-2">• <span className="text-slate-700">파일 형식:</span> 엑셀(.xlsx, .xls) 또는 CSV 파일을 지원합니다.</li>
+                                    <li className="flex gap-2">• <span className="text-slate-700">자동 보정:</span> '1팀'이라고 입력해도 시스템이 '영업1팀'으로 자동 인식합니다.</li>
                                 </ul>
                             </div>
                             <div>
