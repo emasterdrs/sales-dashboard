@@ -157,10 +157,25 @@ export default function App() {
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     });
     const [view, setView] = useState(() => {
-        return localStorage.getItem('dashboard_view') || 'dashboard_team';
+        // Preference: URL Hash > localStorage > Default
+        const hash = window.location.hash.replace('#', '');
+        return hash || localStorage.getItem('dashboard_view') || 'dashboard_team';
     });
+
+    useEffect(() => {
+        const handleHashChange = () => {
+            const hash = window.location.hash.replace('#', '');
+            if (hash && hash !== view) setView(hash);
+        };
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
+    }, [view]);
+
     useEffect(() => {
         localStorage.setItem('dashboard_view', view);
+        if (window.location.hash !== `#${view}`) {
+            window.location.hash = view;
+        }
     }, [view]);
 
     const [mainTab, setMainTab] = useState('current');
@@ -257,13 +272,19 @@ export default function App() {
     }, [masterData]);
 
     const [lastUpdated, setLastUpdated] = useState(() => {
+        if (actualDataJson && actualDataJson.lastSync && actualDataJson.lastSync !== "") {
+            const date = new Date(actualDataJson.lastSync);
+            if (!isNaN(date.getTime())) {
+                const yyyy = date.getFullYear();
+                const mm = String(date.getMonth() + 1).padStart(2, '0');
+                const dd = String(date.getDate()).padStart(2, '0');
+                const hh = String(date.getHours()).padStart(2, '0');
+                const min = String(date.getMinutes()).padStart(2, '0');
+                return `${yyyy}년 ${mm}월 ${dd}일 ${hh}:${min}`;
+            }
+        }
         const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const hh = String(now.getHours()).padStart(2, '0');
-        const min = String(now.getMinutes()).padStart(2, '0');
-        return `${yyyy}년 ${mm}월 ${dd}일 ${hh}:${min}`;
+        return `${now.getFullYear()}년 ${String(now.getMonth() + 1).padStart(2, '0')}월 ${String(now.getDate()).padStart(2, '0')}일 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     });
 
     const [currentTime, setCurrentTime] = useState(() => {
