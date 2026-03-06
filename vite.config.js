@@ -6,7 +6,9 @@ export default defineConfig({
   plugins: [react()],
   base: process.env.VERCEL ? '/' : '/sales-dashboard/',
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    minify: false,
+    chunkSizeWarningLimit: 2000
   },
   server: {
     host: '0.0.0.0',
