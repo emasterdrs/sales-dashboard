@@ -197,29 +197,46 @@ export default function App() {
     const [loginId, setLoginId] = useState('');
     const [loginPw, setLoginPw] = useState('');
     const [masterData, setMasterData] = useState(() => {
-        // 1. Generate base dataset
-        const baseDataset = generateFullDataset();
+        // 1. Initial empty state
+        let currentMaster = { actual: [], target: [], bonds: [] };
 
-        // 2. Load sync'd data from CSV (JSON)
-        if (actualDataJson && actualDataJson.actual && actualDataJson.actual.length > 0) {
-            // Merge actual data: Replace or append
-            // For now, we'll append and ensure unique/latest if possible, 
-            // but simplest is to use CSV data as priority for those specific months.
-            const csvYM = [...new Set(actualDataJson.actual.map(r => String(r['년도월'])))];
-            const filteredBase = baseDataset.actual.filter(r => !csvYM.includes(String(r['년도월'])));
-            baseDataset.actual = [...filteredBase, ...actualDataJson.actual];
+        // 2. Load sync'd data from actual_data.json (High Priority)
+        if (actualDataJson) {
+            if (actualDataJson.actual) currentMaster.actual = actualDataJson.actual;
+            if (actualDataJson.target) currentMaster.target = actualDataJson.target;
+            if (actualDataJson.bonds) currentMaster.bonds = actualDataJson.bonds;
         }
 
+        // 3. Fallback to localStorage if available (User edits/temporary state)
         try {
             const saved = localStorage.getItem('dashboard_master_data');
             if (saved) {
                 const parsed = JSON.parse(saved);
-                if (parsed.actual && parsed.target) return parsed;
+                // Only use localStorage if it has data and we don't have fresh JSON data
+                // Or merge them? Let's prioritize fresh JSON sync for 'actual' data.
+                if (currentMaster.actual.length === 0 && parsed.actual) {
+                    currentMaster.actual = parsed.actual;
+                }
+                if (currentMaster.target.length === 0 && parsed.target) {
+                    currentMaster.target = parsed.target;
+                }
+                if (currentMaster.bonds.length === 0 && parsed.bonds) {
+                    currentMaster.bonds = parsed.bonds;
+                }
             }
         } catch (e) {
             console.warn('Failed to load master data from localStorage', e);
         }
-        return baseDataset;
+
+        // 4. If EVERYTHING is still empty, ONLY then generate mock data for first-time demo
+        // But since the user asked for "initialization", we'll skip the auto-generation 
+        // if they want to start from zero.
+        if (currentMaster.actual.length === 0 && currentMaster.target.length === 0) {
+            // return generateFullDataset(); // Uncomment if you want auto-mocking
+            return { actual: [], target: [], bonds: [] };
+        }
+
+        return currentMaster;
     });
 
     useEffect(() => {
