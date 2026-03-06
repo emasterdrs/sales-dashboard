@@ -168,11 +168,22 @@ export default function App() {
 
     // Auth & Users
     const [users, setUsers] = useState(() => {
+        const defaultAdmin = { id: 'admin', pw: '123123', name: '관리자', permissions: ['dashboard_team', 'dashboard_type', 'settings'] };
         try {
             const saved = localStorage.getItem('dashboard_users');
-            if (saved) return JSON.parse(saved);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Force update admin password to 123123 if requested
+                const adminIdx = parsed.findIndex(u => u.id === 'admin');
+                if (adminIdx !== -1) {
+                    parsed[adminIdx].pw = '123123';
+                } else {
+                    parsed.push(defaultAdmin);
+                }
+                return parsed;
+            }
         } catch (e) { }
-        return [{ id: 'admin', pw: 'admin1234', name: '관리자', permissions: ['dashboard_team', 'dashboard_type', 'settings'] }];
+        return [defaultAdmin];
     });
     useEffect(() => {
         try {
@@ -975,52 +986,9 @@ export default function App() {
                 <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[85%] bg-white/95 backdrop-blur-3xl border border-slate-200 rounded-[24px] p-2.5 flex items-center justify-around shadow-2xl z-50 ring-1 ring-slate-900/5">
                     <SidebarIcon active={view === 'dashboard_team'} icon={BarChart3} label="팀별 실적" onClick={() => setView('dashboard_team')} color="indigo" />
                     <SidebarIcon active={view === 'dashboard_type'} icon={PieChartIcon} label="유형별 실적" onClick={() => setView('dashboard_type')} color="indigo" />
-                    <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={handleSettingsClick} color="slate" />
+                    <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={() => setView('settings')} color="slate" />
                 </nav>
             </div>
-
-            {/* Login Modal */}
-            <AnimatePresence>
-                {showLogin && (
-                    <motion.div
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
-                    >
-                        <motion.div
-                            initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-                            className="bg-white rounded-[32px] p-10 w-[400px] shadow-2xl border border-slate-200/50"
-                        >
-                            <h2 className="text-2xl font-black text-slate-800 mb-8 tracking-tight">비밀번호가 필요합니다</h2>
-                            <form onSubmit={handleLogin} className="space-y-6">
-                                <div>
-                                    <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">관리자 아이디</label>
-                                    <input
-                                        type="text"
-                                        value={loginId}
-                                        onChange={(e) => setLoginId(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-black text-slate-800 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                                        placeholder="admin"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">비밀번호</label>
-                                    <input
-                                        type="password"
-                                        value={loginPw}
-                                        onChange={(e) => setLoginPw(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-black text-slate-800 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                                        placeholder="기본 비밀번호: admin1234"
-                                    />
-                                </div>
-                                <div className="flex gap-4 pt-4">
-                                    <button type="button" onClick={() => setShowLogin(false)} className="flex-1 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl text-sm font-black hover:bg-slate-50 transition-colors">취소</button>
-                                    <button type="submit" className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 transition-all">접속하기</button>
-                                </div>
-                            </form>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
         </div>
     );
 }
