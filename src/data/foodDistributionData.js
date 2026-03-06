@@ -68,7 +68,9 @@ const generateProducts = () => {
     return products;
 };
 
-export const ALL_PRODUCTS = generateProducts();
+let _ALL_PRODUCTS = null;
+export const getAllProducts = () => { if (!_ALL_PRODUCTS) _ALL_PRODUCTS = generateProducts(); return _ALL_PRODUCTS; };
+export const ALL_PRODUCTS = getAllProducts();
 
 // 거래처 생성 (영업사원 당 50~55개)
 export function generateCustomersForSalesperson(salespersonId, salespersonName) {
@@ -84,11 +86,7 @@ export function generateCustomersForSalesperson(salespersonId, salespersonName) 
     return customers;
 }
 
-// 모든 거래처 생성
-export const ALL_CUSTOMERS = SALESPERSONS.flatMap(sp =>
-    generateCustomersForSalesperson(sp.id, sp.name)
-);
-
-console.log(`총 영업사원: ${SALESPERSONS.length}명`);
-console.log(`총 거래처: ${ALL_CUSTOMERS.length}개`);
-console.log(`총 품목: ${ALL_PRODUCTS.length}개`);
+// 모든 거래처 생성 (lazy)
+let _ALL_CUSTOMERS = null;
+export const getAllCustomers = () => { if (!_ALL_CUSTOMERS) _ALL_CUSTOMERS = SALESPERSONS.flatMap(sp => generateCustomersForSalesperson(sp.id, sp.name)); return _ALL_CUSTOMERS; };
+export const ALL_CUSTOMERS = getAllCustomers();
