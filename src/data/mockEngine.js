@@ -2,7 +2,7 @@
  * [프로젝트 30억] BI 분석 엔진
  * 드릴다운 구조: 팀 -> 영업사원 -> 거래처 -> 품목
  */
-import { SALESPERSONS } from './foodDistributionData.js';
+// import { SALESPERSONS } from './foodDistributionData.js';
 
 /**
  * 전역 설정 (기획안의 '설정' 섹션 반영)
@@ -41,7 +41,9 @@ export class SalesBI {
                         .map(sp => sp.name)
                 }));
             }
-        } catch (e) { }
+        } catch (e) {
+            console.error('Settings load error:', e);
+        }
 
         const mapTeamAndType = (r) => {
             const t = r['영업팀'];

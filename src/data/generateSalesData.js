@@ -6,7 +6,7 @@ import { SALESPERSONS, ALL_CUSTOMERS, ALL_PRODUCTS } from './foodDistributionDat
 
 // 1. 유틸리티 함수
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-const randomElement = (arr) => arr[Math.floor(Math.random() * arr.length)];
+// const randomElement = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 /**
  * 매출 데이터 생성 (팀별 가중치 반영)

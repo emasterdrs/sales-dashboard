@@ -90,7 +90,6 @@ export function getYearlyCalendarData(year) {
 
     for (let month = 1; month <= 12; month++) {
         const days = [];
-        const date = new Date(year, month - 1, 1);
         const lastDay = new Date(year, month, 0).getDate();
 
         for (let i = 1; i <= lastDay; i++) {

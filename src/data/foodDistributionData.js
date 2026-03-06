@@ -74,13 +74,6 @@ export const ALL_PRODUCTS = generateProducts();
 export function generateCustomersForSalesperson(salespersonId, salespersonName) {
     const customers = [];
     const count = 50 + Math.floor(Math.random() * 6); // 50~55개
-    const baseNames = [
-        '한국식품', '글로벌푸드', '프레시마트', '프리미엄식자재', '동네슈퍼',
-        '대형마트', '편의점체인', '레스토랑그룹', '호텔식자재', '카페체인',
-        '베이커리', '패밀리레스토랑', '패스트푸드', '뷔페', '이탈리안레스토랑',
-        '일식당', '중식당', '한식당', '분식집', '치킨전문점',
-        '피자전문점', '햄버거전문점', '샌드위치전문점', '도시락전문점', '급식업체'
-    ];
 
     for (let i = 0; i < count; i++) {
         const code = `${salespersonId}-C${String(i + 1).padStart(3, '0')}`;

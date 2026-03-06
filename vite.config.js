@@ -7,7 +7,7 @@ export default defineConfig({
   base: process.env.VERCEL ? '/' : '/sales-dashboard/',
   build: {
     outDir: 'dist',
-    minify: false,
+    emptyOutDir: true,
     chunkSizeWarningLimit: 2000
   },
   server: {
