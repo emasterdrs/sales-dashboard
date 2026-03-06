@@ -50,8 +50,9 @@ import {
 
 import { saveAs } from 'file-saver';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateStandardSalesData, generateTargetData, generateFullDataset } from './data/generateSalesData';
-import { SalesBI, SETTINGS } from './data/mockEngine';
+import { generateFullDataset, convertToCSV, downloadCSV } from './data/generateSalesData';
+import actualDataJson from './data/actual_data.json';
+import { TEAMS, SALESPERSONS, ALL_CUSTOMERS, ALL_PRODUCTS, PRODUCT_TYPES } from './data/foodDistributionData';
 import { getYearlyCalendarData } from './lib/dateUtils';
 import { Quote } from './components/Quote';
 import { SettingsView } from './components/SettingsView';
@@ -195,6 +196,19 @@ export default function App() {
     const [loginId, setLoginId] = useState('');
     const [loginPw, setLoginPw] = useState('');
     const [masterData, setMasterData] = useState(() => {
+        // 1. Generate base dataset
+        const baseDataset = generateFullDataset();
+
+        // 2. Load sync'd data from CSV (JSON)
+        if (actualDataJson && actualDataJson.actual && actualDataJson.actual.length > 0) {
+            // Merge actual data: Replace or append
+            // For now, we'll append and ensure unique/latest if possible, 
+            // but simplest is to use CSV data as priority for those specific months.
+            const csvYM = [...new Set(actualDataJson.actual.map(r => String(r['년도월'])))];
+            const filteredBase = baseDataset.actual.filter(r => !csvYM.includes(String(r['년도월'])));
+            baseDataset.actual = [...filteredBase, ...actualDataJson.actual];
+        }
+
         try {
             const saved = localStorage.getItem('dashboard_master_data');
             if (saved) {
@@ -204,7 +218,7 @@ export default function App() {
         } catch (e) {
             console.warn('Failed to load master data from localStorage', e);
         }
-        return generateFullDataset();
+        return baseDataset;
     });
 
     useEffect(() => {
