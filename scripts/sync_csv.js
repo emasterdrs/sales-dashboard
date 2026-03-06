@@ -55,8 +55,13 @@ function sync() {
         (f.startsWith('판매데이터') || f.startsWith('Sales')) &&
         (f.endsWith('.csv') || f.endsWith('.xlsx') || f.endsWith('.xls'))
     );
+    const bondFiles = files.filter(f =>
+        (f.startsWith('채권데이터') || f.startsWith('Bond')) &&
+        (f.endsWith('.csv') || f.endsWith('.xlsx') || f.endsWith('.xls'))
+    );
 
-    console.log(`Found ${salesFiles.length} data files: ${salesFiles.join(', ')}`);
+    console.log(`Found ${salesFiles.length} sales files: ${salesFiles.join(', ')}`);
+    console.log(`Found ${bondFiles.length} bond files: ${bondFiles.join(', ')}`);
 
     let allActual = [];
     salesFiles.forEach(file => {
@@ -95,9 +100,30 @@ function sync() {
         allActual = allActual.concat(mapped);
     });
 
+    let allBonds = [];
+    bondFiles.forEach(file => {
+        const filePath = path.join(PUBLIC_DIR, file);
+        const data = readDataToJSON(filePath);
+
+        const mapped = data.map(r => {
+            return {
+                '청구서ID': r['청구서ID'] || '',
+                '거래처ID': r['거래처ID'] || '',
+                '거래처명': r['거래처명'] || '',
+                '청구일자': r['청구일자'] || '',
+                '만기일': r['만기일'] || '',
+                '금액': parseFloat(r['금액']) || 0,
+                '결제완료': r['결제완료'] || 'N',
+                '연체여부': r['연체여부'] || 'N',
+                '연체일수': parseInt(r['연체일수']) || 0
+            };
+        });
+        allBonds = allBonds.concat(mapped);
+    });
+
     const result = {
         actual: allActual,
-        bonds: [], // Initializing bonds to empty
+        bonds: allBonds,
         lastSync: new Date().toISOString()
     };
 
@@ -106,7 +132,8 @@ function sync() {
     }
 
     fs.writeFileSync(OUTPUT_FILE, JSON.stringify(result, null, 2));
-    console.log(`Successfully synced ${allActual.length} rows to ${OUTPUT_FILE}`);
+    console.log(`Successfully synced ${allActual.length} sales rows and ${allBonds.length} bond rows to ${OUTPUT_FILE}`);
+
 }
 
 sync();

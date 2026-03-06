@@ -926,21 +926,24 @@ function TypesSubView({ masterData, setMasterData }) {
 function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
     const salesInputRef = useRef(null);
     const targetInputRef = useRef(null);
+    const bondInputRef = useRef(null);
 
     // 파일 선택 상태
-    const [selectedFiles, setSelectedFiles] = useState({ sales: null, target: null });
+    const [selectedFiles, setSelectedFiles] = useState({ sales: null, target: null, bonds: null });
     // 최근 업로드 정보
     const [uploadHistory, setUploadHistory] = useState(() => {
         try {
             const saved = localStorage.getItem('dashboard_upload_history');
             return saved ? JSON.parse(saved) : {
                 sales: { filename: '-', time: '-' },
-                target: { filename: '-', time: '-' }
+                target: { filename: '-', time: '-' },
+                bonds: { filename: '-', time: '-' }
             };
         } catch (e) {
             return {
                 sales: { filename: '-', time: '-' },
-                target: { filename: '-', time: '-' }
+                target: { filename: '-', time: '-' },
+                bonds: { filename: '-', time: '-' }
             };
         }
     });
@@ -994,15 +997,22 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
                 const monthsInFile = [...new Set(uploadedRows.map(r => String(r['년도월'])))];
 
                 setMasterData(prev => {
-                    const currentData = type === 'sales' ? prev.actual : prev.target;
-                    // 기존 데이터에서 업로드된 달과 겹치는 데이터 제거
-                    const filteredData = currentData.filter(r => !monthsInFile.includes(String(r['년도월'])));
-                    // 새로운 데이터 합류
-                    const mergedData = [...filteredData, ...uploadedRows];
+                    const currentData = type === 'sales' ? prev.actual : (type === 'target' ? prev.target : prev.bonds || []);
+                    // 기존 데이터에서 업로드된 달과 겹치는 데이터 제거 (채권은 년도월이 없을 수도 있어 전체 교체 or 매칭 전략 필요)
+                    // 채권 데이터는 보통 '전체 리프레시' 성격이 강함.
+                    let mergedData;
+                    if (type === 'bonds') {
+                        mergedData = uploadedRows;
+                    } else {
+                        // 기존 데이터에서 업로드된 달과 겹치는 데이터 제거
+                        const filteredData = currentData.filter(r => !monthsInFile.includes(String(r['년도월'])));
+                        // 새로운 데이터 합류
+                        mergedData = [...filteredData, ...uploadedRows];
+                    }
 
                     return {
                         ...prev,
-                        [type === 'sales' ? 'actual' : 'target']: mergedData
+                        [type === 'sales' ? 'actual' : (type === 'target' ? 'target' : 'bonds')]: mergedData
                     };
                 });
 
@@ -1018,9 +1028,10 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
 
                 setSelectedFiles(prev => ({ ...prev, [type]: null }));
                 if (type === 'sales') salesInputRef.current.value = '';
-                else targetInputRef.current.value = '';
+                else if (type === 'target') targetInputRef.current.value = '';
+                else bondInputRef.current.value = '';
 
-                alert(`${type === 'sales' ? '매출실적' : '목표'} 업로드 성공! (${monthsInFile.join(', ')} 데이터가 갱신되었습니다.)`);
+                alert(`${type === 'sales' ? '매출실적' : (type === 'target' ? '목표' : '채권')} 업로드 성공!`);
             } catch (error) {
                 console.error(error);
                 alert('파일 처리 중 오류가 발생했습니다.');
@@ -1048,7 +1059,7 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
                     '매출금액': 1000000,
                     '중량(KG)': 10.5
                 }];
-            } else {
+            } else if (type === 'target') {
                 data = [{
                     '년도월': '202601(예시)',
                     '영업팀': '영업1팀',
@@ -1058,16 +1069,29 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
                     '품목유형': '치즈',
                     '목표금액': 1200000
                 }];
+            } else if (type === 'bonds') {
+                data = [{
+                    '청구서ID': 'INV-001',
+                    '거래처ID': 'C001',
+                    '거래처명': '거래처A',
+                    '청구일자': '2026-01-01',
+                    '만기일': '2026-01-31',
+                    '금액': 5000000,
+                    '결제완료': 'N',
+                    '연체여부': 'N',
+                    '연체일수': 0
+                }];
             }
+
         }
 
         const csv = convertToCSV(data);
         let filename = '';
         if (mode === 'example') {
-            filename = type === 'sales' ? '판매데이터_2025.csv' : 'Target_Data_Example.csv';
+            filename = type === 'sales' ? '판매데이터_2025.csv' : (type === 'target' ? 'Target_Data_Example.csv' : 'Bond_Data_Example.csv');
         } else {
             const currentYear = new Date().getFullYear();
-            filename = type === 'sales' ? `판매데이터_${currentYear}.csv` : `Target_Upload_Form_${currentYear}.csv`;
+            filename = type === 'sales' ? `판매데이터_${currentYear}.csv` : (type === 'target' ? `Target_Upload_Form_${currentYear}.csv` : `Bond_Upload_Form_${currentYear}.csv`);
         }
         downloadCSV(csv, filename);
     };
@@ -1138,6 +1162,17 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
                                             </div>
                                         </span>
                                     </li>
+                                </ul>
+                            </div>
+                            <div className="md:col-span-2 pt-6 border-t border-slate-100">
+                                <h5 className="text-[13px] font-black text-amber-600 mb-2 uppercase flex items-center gap-2">
+                                    <CreditCard size={14} /> 채권 및 입금 데이터 업로드 가이드
+                                </h5>
+                                <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-2.5 text-[12px] text-slate-500 font-bold leading-relaxed">
+                                    <li className="flex gap-2">• <span className="text-slate-700">필수 항목:</span> 청구서ID, 거래처ID/명, 청구/만기일자, 금액, 결제완료(Y/N)</li>
+                                    <li className="flex gap-2">• <span className="text-slate-700">연체 관리:</span> 연체여부(Y/N)와 연체일수를 입력하면 대시보드에서 자동 경고가 표시됩니다.</li>
+                                    <li className="flex gap-2">• <span className="text-slate-700">데이터 성격:</span> 채권은 누적 관리가 아닌 <b>현재 시점의 전체 내역</b>을 업로드하는 방식입니다.</li>
+                                    <li className="flex gap-2">• <span className="text-slate-700">추천 주기:</span> 매일 또는 주간 단위로 최신본을 업로드하여 미수금을 관리하세요.</li>
                                 </ul>
                             </div>
                         </div>
@@ -1213,6 +1248,40 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
                             </div>
                         </div>
                         <p className="text-[10px] text-rose-500 font-black italic bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100">※ 파일 업로드 시 해당 년도월의 기존 목표가 자동으로 덮어씌워집니다.</p>
+                    </div>
+                </SettingCard>
+
+                <SettingCard
+                    title="채권 및 결제 데이터"
+                    icon={CreditCard}
+                    desc="미수금, 연체 내역 및 결제 현황 마스터 데이터"
+                    extra={
+                        <div className="flex gap-2">
+                            <button onClick={() => handleDownloadExample('bonds', 'example')} className="px-3 py-1.5 bg-amber-50 text-amber-600 rounded-lg text-xs font-black hover:bg-amber-100 transition-all border border-amber-100">예시 다운로드</button>
+                            <button onClick={() => handleDownloadExample('bonds', 'form')} className="px-3 py-1.5 bg-white text-slate-600 rounded-lg text-xs font-black hover:bg-slate-100 transition-all border border-slate-200">업로드 양식 다운로드</button>
+                        </div>
+                    }
+                >
+                    <div className="space-y-6">
+                        <div className="flex flex-col md:flex-row gap-3">
+                            <div className="flex-1 h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center text-sm font-bold text-slate-500 truncate">
+                                {selectedFiles.bonds ? selectedFiles.bonds.name : '선택된 파일 없음'}
+                            </div>
+                            <input type="file" ref={bondInputRef} className="hidden" onChange={(e) => handleFileSelect(e, 'bonds')} accept=".csv,.xlsx" />
+                            <button onClick={() => bondInputRef.current.click()} className="px-6 h-12 bg-slate-800 text-white rounded-xl font-black text-sm hover:bg-slate-700 transition-all shadow-sm">찾아보기</button>
+                            <button onClick={() => handleFileUploadExecute('bonds')} className="px-6 h-12 bg-amber-600 text-white rounded-xl font-black text-sm hover:bg-amber-700 transition-all shadow-md shadow-amber-100">업로드</button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-50">
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">최근 업로드 파일</p>
+                                <p className="text-sm font-black text-slate-700 truncate">{uploadHistory.bonds.filename}</p>
+                            </div>
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">최근 업로드 일시</p>
+                                <p className="text-sm font-black text-slate-700">{uploadHistory.bonds.time}</p>
+                            </div>
+                        </div>
                     </div>
                 </SettingCard>
             </div>
