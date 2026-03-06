@@ -1,67 +1,103 @@
 
 import fs from 'fs';
 import path from 'path';
+import * as XLSX from 'xlsx';
 
 const PUBLIC_DIR = './public';
 const OUTPUT_FILE = './src/data/actual_data.json';
 
-function parseCSV(filePath) {
+// Helper: Excel 또는 CSV 읽어서 JSON 배열로 반환
+function readDataToJSON(filePath) {
     try {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const lines = content.split('\n').filter(l => l.trim());
-        if (lines.length === 0) return [];
+        const ext = path.extname(filePath).toLowerCase();
 
-        const headers = lines[0].split(',').map(h => h.trim());
-        const data = [];
+        if (ext === '.xlsx' || ext === '.xls') {
+            const workbook = XLSX.readFile(filePath);
+            const sheetName = workbook.SheetNames[0]; // 첫 번째 시트 사용
+            const worksheet = workbook.Sheets[sheetName];
+            return XLSX.utils.sheet_to_json(worksheet);
+        } else if (ext === '.csv') {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            const lines = content.split('\n').filter(l => l.trim());
+            if (lines.length === 0) return [];
 
-        for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map(v => v.trim());
-            const obj = {};
-            headers.forEach((h, idx) => {
-                obj[h] = values[idx];
-            });
-            data.push(obj);
+            // BOM 제거 (있는 경우)
+            const cleanHeader = lines[0].replace(/^\uFEFF/, '');
+            const headers = cleanHeader.split(',').map(h => h.trim());
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim());
+                const obj = {};
+                headers.forEach((h, idx) => {
+                    obj[h] = values[idx];
+                });
+                data.push(obj);
+            }
+            return data;
         }
-        return data;
+        return [];
     } catch (e) {
-        console.error(`Error parsing ${filePath}:`, e);
+        console.error(`Error reading ${filePath}:`, e);
         return [];
     }
 }
 
 function sync() {
-    console.log('Syncing CSV files to JSON...');
+    console.log('Syncing Yearly Excel/CSV files to Dashboard JSON...');
 
-    // Find all sales data CSVs
+    if (!fs.existsSync(PUBLIC_DIR)) {
+        console.error('Public directory not found.');
+        return;
+    }
+
     const files = fs.readdirSync(PUBLIC_DIR);
-    const salesFiles = files.filter(f => f.startsWith('판매데이터') && f.endsWith('.csv'));
+    // 판매데이터_ 로 시작하는 csv, xlsx, xls 파일 모두 찾기
+    const salesFiles = files.filter(f =>
+        (f.startsWith('판매데이터') || f.startsWith('Sales')) &&
+        (f.endsWith('.csv') || f.endsWith('.xlsx') || f.endsWith('.xls'))
+    );
+
+    console.log(`Found ${salesFiles.length} data files: ${salesFiles.join(', ')}`);
 
     let allActual = [];
     salesFiles.forEach(file => {
         const filePath = path.join(PUBLIC_DIR, file);
-        const data = parseCSV(filePath);
+        const data = readDataToJSON(filePath);
 
-        // Map to standard format
-        const mapped = data.map(r => ({
-            '년도월': r['거래일자'] ? r['거래일자'].replace(/-/g, '').substring(0, 6) : '',
-            '영업팀': r['팀'] ? (r['팀'].includes('팀') ? r['팀'] : `영업${r['팀'].replace('팀', '')}팀`) : '기타',
-            '영업사원명': r['영업사원명'] || '기타',
-            '거래처코드': r['거래처ID'] || '',
-            '거래처명': r['거래처명'] || '',
-            '품목유형': '기타', // CSV에 유형이 없으므로 기본값
-            '품목코드': r['품목ID'] || '',
-            '품목명': r['품목명'] || '',
-            '매출금액': parseFloat(r['금액']) || 0,
-            '중량(KG)': parseFloat(r['수량']) || 0 // 수량을 중량으로 가정한 예시
-        }));
+        const mapped = data.map(r => {
+            let rawTeam = String(r['팀'] || r['Team'] || '기타');
+            let teamName = rawTeam;
+            if (rawTeam.match(/^\d/)) {
+                teamName = `영업${rawTeam}`;
+            } else if (!rawTeam.includes('영업') && rawTeam !== '기타') {
+                teamName = `영업${rawTeam}`;
+            }
+
+            const dateVal = r['거래일자'] || r['Date'] || '';
+            const ym = String(dateVal).replace(/-/g, '').substring(0, 6);
+
+            return {
+                '년도월': ym,
+                '영업팀': teamName,
+                '영업사원명': r['영업사원명'] || r['Salesperson'] || '기타',
+                '거래처코드': r['거래처ID'] || r['CustomerID'] || '',
+                '거래처명': r['거래처명'] || r['CustomerName'] || '',
+                '품목유형': r['품목유형'] || r['Type'] || '기타',
+                '품목코드': r['품목ID'] || r['ItemID'] || '',
+                '품목명': r['품목명'] || r['ItemName'] || '',
+                '매출금액': parseFloat(r['금액'] || r['Amount']) || 0,
+                '중량(KG)': parseFloat(r['수량'] || r['Quantity']) || 0
+            };
+        });
         allActual = allActual.concat(mapped);
     });
 
-    // Handle accounts receivable (채권) if needed by adding to JSON
-    const bondFile = files.find(f => f.includes('채권') && f.endsWith('.csv'));
+    // 채권 데이터 처리 (Excel/CSV 공용)
+    const bondFile = files.find(f => (f.includes('채권') || f.includes('Receivable')) && (f.endsWith('.csv') || f.endsWith('.xlsx')));
     let bonds = [];
     if (bondFile) {
-        bonds = parseCSV(path.join(PUBLIC_DIR, bondFile));
+        bonds = readDataToJSON(path.join(PUBLIC_DIR, bondFile));
     }
 
     const result = {
@@ -75,7 +111,7 @@ function sync() {
     }
 
     fs.writeFileSync(OUTPUT_FILE, JSON.stringify(result, null, 2));
-    console.log(`Successfully synced ${allActual.length} sales rows to ${OUTPUT_FILE}`);
+    console.log(`Successfully synced ${allActual.length} rows to ${OUTPUT_FILE}`);
 }
 
 sync();
