@@ -165,8 +165,22 @@ export default function App() {
     const [showWeightDropdown, setShowWeightDropdown] = useState(false);
     const [fontFamily, setFontFamily] = useState('Gmarket');
     const [settingsSubView, setSettingsSubView] = useState('bizDays');
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [showLogin, setShowLogin] = useState(false);
+
+    // Auth & Users
+    const [users, setUsers] = useState(() => {
+        try {
+            const saved = localStorage.getItem('dashboard_users');
+            if (saved) return JSON.parse(saved);
+        } catch (e) { }
+        return [{ id: 'admin', pw: 'admin1234', name: '관리자', permissions: ['dashboard_team', 'dashboard_type', 'settings'] }];
+    });
+    useEffect(() => {
+        try {
+            localStorage.setItem('dashboard_users', JSON.stringify(users));
+        } catch (e) { }
+    }, [users]);
+
+    const [loggedInUser, setLoggedInUser] = useState(null);
     const [loginId, setLoginId] = useState('');
     const [loginPw, setLoginPw] = useState('');
     const [masterData, setMasterData] = useState(() => {
@@ -377,36 +391,17 @@ export default function App() {
         setPath([...path, { level: nextLvl, id: item.id || item.name, name: item.name }]);
     };
 
-    const handleExport = () => {
-        const headers = ["구분", "목표", "실적", "달성률", "전년실적", "전년성장률"];
-        const rows = drillDownData.map(d => [
-            d.name,
-            d.target,
-            d.actual,
-            `${(d.achievement || 0).toFixed(1)}%`,
-            d.lastYear,
-            `${(d.yoy || 0).toFixed(1)}%`
-        ]);
-        const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-        saveAs(blob, `sales_report_${selectedMonth}.csv`);
-    };
-
-    const handleSettingsClick = () => {
-        if (isAdmin) setView('settings');
-        else setShowLogin(true);
-    };
-
     const handleLogin = (e) => {
         e.preventDefault();
         try {
-            // Local login logic without backend API
-            if (loginId === 'admin' && loginPw === 'admin1234') {
-                setIsAdmin(true);
-                setShowLogin(false);
+            const user = users.find(u => u.id === loginId && u.pw === loginPw);
+            if (user) {
+                setLoggedInUser(user);
                 setLoginId('');
                 setLoginPw('');
-                setView('settings');
+                if (user.permissions.includes('dashboard_team')) setView('dashboard_team');
+                else if (user.permissions.includes('dashboard_type')) setView('dashboard_type');
+                else if (user.permissions.includes('settings')) setView('settings');
             } else {
                 alert('아이디 또는 비밀번호가 올바르지 않습니다.');
             }
@@ -425,20 +420,61 @@ export default function App() {
         'Inter': 'font-inter'
     };
 
+    if (!loggedInUser) {
+        return (
+            <div className={`min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center ${fontMap[fontFamily]}`}>
+                <div className="bg-white p-10 rounded-3xl shadow-2xl w-[400px] border border-slate-100">
+                    <div className="text-center mb-8">
+                        <h2 className="text-3xl font-black text-slate-900 tracking-tighter mb-2">영업 대시보드</h2>
+                        <p className="text-slate-400 font-bold text-sm">계정에 로그인하세요</p>
+                    </div>
+                    <form onSubmit={handleLogin} className="space-y-5">
+                        <div>
+                            <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2">아이디</label>
+                            <input type="text" value={loginId} onChange={e => setLoginId(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-bold text-slate-700 transition-all" autoFocus />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2">비밀번호</label>
+                            <input type="password" value={loginPw} onChange={e => setLoginPw(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-bold text-slate-700 transition-all" />
+                        </div>
+                        <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg py-3.5 rounded-xl transition-all mt-4 shadow-lg shadow-indigo-600/30 active:scale-[0.98]">
+                            로그인
+                        </button>
+                    </form>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className={`min-h-screen bg-[#f8fafc] text-slate-600 flex flex-col md:flex-row overflow-x-hidden pb-20 md:pb-0 shadow-inner ${fontMap[fontFamily]}`}>
             <aside className="hidden md:flex w-64 bg-white border-r border-slate-200/60 flex-col py-10 z-50 h-screen sticky top-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)] px-6">
-                <div className="flex items-center gap-4 px-2 mb-16">
+                <div className="flex items-center gap-4 px-2 mb-12">
                     <div className="flex flex-col justify-center">
-                        <span className="text-3xl font-black text-slate-900 tracking-tighter leading-none">영업 대시보드</span>
+                        <button onClick={() => {
+                            if (loggedInUser.permissions.includes('dashboard_team')) setView('dashboard_team');
+                            else if (loggedInUser.permissions.includes('dashboard_type')) setView('dashboard_type');
+                        }} className="text-3xl font-black text-slate-900 tracking-tighter leading-none hover:text-indigo-600 transition-colors text-left">
+                            영업 대시보드
+                        </button>
+                        <div className="mt-3 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100 flex items-center gap-1.5 w-max">
+                            <Clock size={12} className="text-emerald-500" />
+                            {currentTime}
+                        </div>
                     </div>
                 </div>
 
                 <nav className="flex-1">
                     <div className="space-y-2">
-                        <SidebarIcon active={view === 'dashboard_team'} icon={BarChart3} label="매출 실적 (팀별)" onClick={() => setView('dashboard_team')} />
-                        <SidebarIcon active={view === 'dashboard_type'} icon={PieChartIcon} label="매출 실적 (유형별)" onClick={() => setView('dashboard_type')} />
-                        <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={handleSettingsClick} />
+                        {loggedInUser.permissions.includes('dashboard_team') && (
+                            <SidebarIcon active={view === 'dashboard_team'} icon={BarChart3} label="매출 실적 (팀별)" onClick={() => setView('dashboard_team')} />
+                        )}
+                        {loggedInUser.permissions.includes('dashboard_type') && (
+                            <SidebarIcon active={view === 'dashboard_type'} icon={PieChartIcon} label="매출 실적 (유형별)" onClick={() => setView('dashboard_type')} />
+                        )}
+                        {loggedInUser.permissions.includes('settings') && (
+                            <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={() => setView('settings')} />
+                        )}
 
                         <AnimatePresence>
                             {view === 'settings' && (
@@ -452,7 +488,8 @@ export default function App() {
                                         { id: 'bizDays', name: '영업일수' },
                                         { id: 'org', name: '조직 및 인원' },
                                         { id: 'types', name: '유형명' },
-                                        { id: 'data', name: '판매 데이터' }
+                                        { id: 'data', name: '판매 데이터' },
+                                        { id: 'accounts', name: '계정 관리' }
                                     ].map(sub => (
                                         <button
                                             key={sub.id}
@@ -468,16 +505,19 @@ export default function App() {
                     </div>
                 </nav>
 
-                <div className="pt-8 mt-8 border-t border-slate-100 px-2">
-                    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-                            <Sparkles size={14} />
+                <div className="pt-8 mt-8 border-t border-slate-100 px-2 flex justify-between items-center">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 flex-1">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                            <span className="font-extrabold text-[12px] uppercase">{loggedInUser.name.slice(0, 1)}</span>
                         </div>
                         <div className="flex flex-col overflow-hidden">
-                            <span className="text-[10px] font-black text-slate-800 truncate leading-tight tracking-tighter">Premium Plan</span>
-                            <span className="text-[9px] font-bold text-slate-400">Enterprise AI</span>
+                            <span className="text-[12px] font-black text-slate-800 truncate leading-tight tracking-tighter">{loggedInUser.name}</span>
+                            <span className="text-[9px] font-bold text-slate-400">@{loggedInUser.id}</span>
                         </div>
                     </div>
+                    <button onClick={() => setLoggedInUser(null)} className="ml-2 p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                    </button>
                 </div>
             </aside>
 
@@ -496,10 +536,6 @@ export default function App() {
                                     <Clock size={12} className="text-indigo-400" />
                                     최종 업데이트: {lastUpdated}
                                 </span>
-                                <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg border border-emerald-200 ml-2 group">
-                                    <Clock size={14} className="group-hover:animate-pulse" />
-                                    <span>현재 시간: {currentTime}</span>
-                                </div>
                             </div>
                         </div>
 
@@ -530,7 +566,7 @@ export default function App() {
                 </header>
 
                 <main className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-4 bg-[#f8fafc] md:max-h-screen">
-                    {view === 'settings' ? <SettingsView setMasterData={setMasterData} masterData={masterData} setLastUpdated={setLastUpdated} fontFamily={fontFamily} setFontFamily={setFontFamily} fontMap={fontMap} selectedMonth={selectedMonth} subView={settingsSubView} /> : (
+                    {view === 'settings' ? <SettingsView setMasterData={setMasterData} masterData={masterData} setLastUpdated={setLastUpdated} fontFamily={fontFamily} setFontFamily={setFontFamily} fontMap={fontMap} selectedMonth={selectedMonth} subView={settingsSubView} users={users} setUsers={setUsers} loggedInUser={loggedInUser} /> : (
                         <div className="max-w-[1600px] mx-auto space-y-4">
                             <div className="flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4">
                                 <div className="flex flex-wrap items-center gap-3 bg-white/80 backdrop-blur-md p-2 px-4 rounded-2xl border border-slate-200/60 shadow-sm transition-all hover:shadow-md">

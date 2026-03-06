@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { generateFullDataset, convertToCSV, downloadCSV } from '../data/generateSalesData';
 import { SALESPERSONS, ALL_CUSTOMERS, ALL_PRODUCTS, PRODUCT_TYPES } from '../data/foodDistributionData';
 
-export function SettingsView({ masterData, setMasterData, setLastUpdated, selectedMonth, subView }) {
+export function SettingsView({ masterData, setMasterData, setLastUpdated, selectedMonth, subView, users, setUsers, loggedInUser }) {
     const [selectedYear, setSelectedYear] = useState('2026');
 
     return (
@@ -21,12 +21,14 @@ export function SettingsView({ masterData, setMasterData, setLastUpdated, select
                     <h2 className="text-4xl font-black text-slate-800 tracking-tighter mb-2 italic uppercase">
                         {subView === 'bizDays' ? 'Business Days' :
                             subView === 'org' ? 'Organization' :
-                                subView === 'types' ? 'Type Definitions' : 'Sales Data Center'}
+                                subView === 'types' ? 'Type Definitions' :
+                                    subView === 'accounts' ? 'Account Management' : 'Sales Data Center'}
                     </h2>
                     <p className="text-slate-500 font-bold text-lg">
                         {subView === 'bizDays' ? '영업일수 및 공휴일 상세 설정' :
                             subView === 'org' ? '조직 및 인원 구성 관리' :
-                                subView === 'types' ? '시스템 유형 및 코드 관리' : '매출 및 목표 데이터 업로드'}
+                                subView === 'types' ? '시스템 유형 및 코드 관리' :
+                                    subView === 'accounts' ? '계정 권한 관리' : '매출 및 목표 데이터 업로드'}
                     </p>
                 </div>
 
@@ -58,6 +60,7 @@ export function SettingsView({ masterData, setMasterData, setLastUpdated, select
                     {subView === 'org' && <OrganizationSubView setMasterData={setMasterData} masterData={masterData} />}
                     {subView === 'types' && <TypesSubView setMasterData={setMasterData} masterData={masterData} />}
                     {subView === 'data' && <DataUploadSubView setMasterData={setMasterData} setLastUpdated={setLastUpdated} masterData={masterData} />}
+                    {subView === 'accounts' && <AccountsSubView users={users} setUsers={setUsers} loggedInUser={loggedInUser} />}
                 </motion.div>
             </AnimatePresence>
         </div>
@@ -1239,5 +1242,155 @@ function SettingCard({ title, icon: Icon, desc, extra, children }) {
             </div>
             {children}
         </div>
+    );
+}
+
+function AccountsSubView({ users, setUsers, loggedInUser }) {
+    const [editingUserId, setEditingUserId] = useState(null);
+    const [editForm, setEditForm] = useState({ id: '', pw: '', name: '', permissions: [] });
+
+    const handleAddUser = () => {
+        setEditingUserId('new');
+        setEditForm({ id: '', pw: '', name: '', permissions: [] });
+    };
+
+    const handleEditUser = (user) => {
+        setEditingUserId(user.id);
+        setEditForm({ ...user });
+    };
+
+    const handleDeleteUser = (id) => {
+        if (id === 'admin') {
+            alert('기본 관리자 계정은 삭제할 수 없습니다.');
+            return;
+        }
+        if (id === loggedInUser.id) {
+            alert('현재 로그인 중인 계정은 삭제할 수 없습니다.');
+            return;
+        }
+        if (confirm('해당 계정을 삭제하시겠습니까?')) {
+            setUsers(users.filter(u => u.id !== id));
+        }
+    };
+
+    const handleSaveUser = () => {
+        if (!editForm.id || !editForm.pw || !editForm.name) {
+            alert('필수 정보를 모두 입력해주세요.');
+            return;
+        }
+        if (editForm.permissions.length === 0) {
+            alert('최소 1개의 권한을 선택해야 합니다.');
+            return;
+        }
+
+        if (editingUserId === 'new') {
+            if (users.some(u => u.id === editForm.id)) {
+                alert('이미 존재하는 아이디입니다.');
+                return;
+            }
+            setUsers([...users, editForm]);
+        } else {
+            setUsers(users.map(u => u.id === editingUserId ? editForm : u));
+        }
+        setEditingUserId(null);
+    };
+
+    const togglePermission = (perm) => {
+        setEditForm(prev => ({
+            ...prev,
+            permissions: prev.permissions.includes(perm)
+                ? prev.permissions.filter(p => p !== perm)
+                : [...prev.permissions, perm]
+        }));
+    };
+
+    const permissionLabels = {
+        'dashboard_team': '매출 실적 (팀별)',
+        'dashboard_type': '매출 실적 (유형별)',
+        'settings': '설정'
+    };
+
+    return (
+        <SettingCard title="계정 관리" icon={Users} desc="시스템 접근 권한 및 계정 정보 관리">
+            <div className="space-y-4">
+                {users.map((user) => (
+                    <div key={user.id} className="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        {editingUserId === user.id ? (
+                            <div className="flex-1 space-y-4 w-full">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <input type="text" placeholder="아이디" value={editForm.id} disabled={user.id === 'admin'} onChange={e => setEditForm({ ...editForm, id: e.target.value })} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold disabled:opacity-50" />
+                                    <input type="password" placeholder="비밀번호" value={editForm.pw} onChange={e => setEditForm({ ...editForm, pw: e.target.value })} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold" />
+                                    <input type="text" placeholder="이름" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold" />
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {Object.entries(permissionLabels).map(([key, label]) => (
+                                        <label key={key} className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-100">
+                                            <input type="checkbox" checked={editForm.permissions.includes(key)} onChange={() => togglePermission(key)} className="w-4 h-4 text-indigo-600 rounded" />
+                                            <span className="text-xs font-black text-slate-700">{label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={handleSaveUser} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-black hover:bg-indigo-700">저장</button>
+                                    <button onClick={() => setEditingUserId(null)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-black hover:bg-slate-200">취소</button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between w-full">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-lg font-black text-slate-800">{user.name}</span>
+                                        <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">@{user.id}</span>
+                                        {user.id === 'admin' && <span className="text-[10px] font-black bg-rose-50 text-rose-500 px-2 py-0.5 rounded-md border border-rose-100">최고관리자</span>}
+                                    </div>
+                                    <div className="flex gap-1 mt-2">
+                                        {user.permissions.map(p => (
+                                            <span key={p} className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md font-bold">{permissionLabels[p]}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 mt-4 md:mt-0">
+                                    {user.id !== 'admin' || loggedInUser.id === 'admin' ? (
+                                        <button onClick={() => handleEditUser(user)} className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-black hover:bg-slate-200">수정</button>
+                                    ) : null}
+                                    {user.id !== 'admin' && (
+                                        <button onClick={() => handleDeleteUser(user.id)} className="px-3 py-1.5 bg-rose-50 text-rose-500 rounded-lg text-xs font-black hover:bg-rose-100 border border-rose-100">삭제</button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ))}
+
+                {editingUserId === 'new' && (
+                    <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl shadow-sm space-y-4">
+                        <h4 className="font-black text-indigo-800 text-sm">새 계정 등록</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <input type="text" placeholder="아이디" value={editForm.id} onChange={e => setEditForm({ ...editForm, id: e.target.value })} className="px-3 py-2 bg-white border border-indigo-200 rounded-xl text-sm font-bold" />
+                            <input type="password" placeholder="비밀번호" value={editForm.pw} onChange={e => setEditForm({ ...editForm, pw: e.target.value })} className="px-3 py-2 bg-white border border-indigo-200 rounded-xl text-sm font-bold" />
+                            <input type="text" placeholder="이름" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="px-3 py-2 bg-white border border-indigo-200 rounded-xl text-sm font-bold" />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {Object.entries(permissionLabels).map(([key, label]) => (
+                                <label key={key} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-indigo-100 rounded-lg cursor-pointer">
+                                    <input type="checkbox" checked={editForm.permissions.includes(key)} onChange={() => togglePermission(key)} className="w-4 h-4 text-indigo-600 rounded" />
+                                    <span className="text-xs font-black text-slate-700">{label}</span>
+                                </label>
+                            ))}
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={handleSaveUser} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-black hover:bg-indigo-700 shadow-md">추가 완료</button>
+                            <button onClick={() => setEditingUserId(null)} className="px-4 py-2 bg-white text-slate-500 border border-slate-200 rounded-lg text-xs font-black hover:bg-slate-50">취소</button>
+                        </div>
+                    </div>
+                )}
+
+                {editingUserId !== 'new' && (
+                    <button onClick={handleAddUser} className="w-full py-4 border-2 border-dashed border-indigo-200 rounded-2xl text-indigo-400 text-sm font-black hover:bg-indigo-50 hover:text-indigo-600 transition-all mt-2">
+                        + 새로운 계정 추가
+                    </button>
+                )}
+            </div>
+        </SettingCard>
     );
 }

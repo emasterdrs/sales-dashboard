@@ -7,7 +7,10 @@ export default defineConfig({
   base: process.env.VERCEL ? '/' : '/sales-dashboard/',
   build: {
     minify: false,
-    cssMinify: false
+    cssMinify: false,
+    rollupOptions: {
+      treeshake: false
+    }
   },
   server: {
     host: '0.0.0.0',
