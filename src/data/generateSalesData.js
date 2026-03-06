@@ -2,7 +2,7 @@
  * [프로젝트 30억] 표준 데이터 생성 엔진
  * 기획안의 [매출업로드 표준 항목] 및 [목표업로드 표준 항목] 기반
  */
-import { SALESPERSONS, ALL_CUSTOMERS, ALL_PRODUCTS, PRODUCT_TYPES } from './foodDistributionData.js';
+import { SALESPERSONS, ALL_CUSTOMERS, ALL_PRODUCTS } from './foodDistributionData.js';
 
 // 1. 유틸리티 함수
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;

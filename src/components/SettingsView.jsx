@@ -9,7 +9,7 @@ import { SETTINGS } from '../data/mockEngine';
 import { calculateBusinessDays, calculateCurrentBusinessDay, getYearlyCalendarData } from '../lib/dateUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateFullDataset, convertToCSV, downloadCSV } from '../data/generateSalesData';
-import { SALESPERSONS, ALL_CUSTOMERS, ALL_PRODUCTS, PRODUCT_TYPES } from '../data/foodDistributionData';
+import { SALESPERSONS, ALL_CUSTOMERS, ALL_PRODUCTS } from '../data/foodDistributionData';
 
 export function SettingsView({ masterData, setMasterData, setLastUpdated, selectedMonth, subView, users, setUsers, loggedInUser }) {
     const [selectedYear, setSelectedYear] = useState('2026');
