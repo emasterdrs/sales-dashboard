@@ -91,54 +91,50 @@ export function generateTargetData(year, month, totalTarget, teamWeights) {
 }
 
 /**
- * 전 기간 데이터셋 생성 (2023-12 ~ 2026-02)
- * 23년 12월 매출 100억 시작, 매월 10억 증액
- * 팀 비중: 1팀 20%, 2팀 40%, 3팀 20%, 4팀 10%, 5팀 10%
- * 달성률: 110% 이상 유지 (실적 = 목표 * 1.15)
+ * 전 기간 데이터셋 생성 (2024 ~ 2026.03)
+ * 2024년: 총 4000억원
+ * 2025년: 총 4500억원
+ * 2026년: 매월 430억원 (3월까지)
  */
 export function generateFullDataset() {
-    const startYear = 2023;
-    const startMonth = 12;
-    const endYear = 2026;
-    const endMonth = 3; // 3월까지 확장
-
+    const years = [2024, 2025, 2026];
     const teamWeights = {
         '영업1팀': 0.2,
-        '영업2팀': 0.4,
-        '영업3팀': 0.2,
-        '영업4팀': 0.1,
+        '영업2팀': 0.3,
+        '영업3팀': 0.25,
+        '영업4팀': 0.15,
         '영업5팀': 0.1
     };
 
     const fullActual = [];
     const fullTarget = [];
 
-    let currentYear = startYear;
-    let currentMonth = startMonth;
-    let monthlyActualAmount = 10000000000; // 100억
+    years.forEach(year => {
+        const monthsInYear = year === 2026 ? 3 : 12;
 
-    while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
-        // 달성률 110% 이상을 위해 목표는 실적보다 낮게 설정
-        // 실적 = 목표 * 1.15 => 목표 = 실적 / 1.15
-        let targetAmountForMonth = Math.round(monthlyActualAmount / 1.15);
-        let actualAmountForMonth = monthlyActualAmount;
+        let yearlyActualTarget = 0;
+        if (year === 2024) yearlyActualTarget = 400000000000;
+        else if (year === 2025) yearlyActualTarget = 450000000000;
+        else if (year === 2026) yearlyActualTarget = 43000000000 * 12; // 연환산 기준
 
-        // 2026년 3월 특수 처리: 4일 기준, 1~3일 중 영업일은 3일 하루 뿐 (2일 대체공휴일)
-        // 1일치 실적만 반영 (한 달 약 20일 기준 1/20 수준)
-        if (currentYear === 2026 && currentMonth === 3) {
-            actualAmountForMonth = Math.round(monthlyActualAmount * (1 / 21)); // 약 1일치
+        const monthlyActualGoal = year === 2026 ? 43000000000 : Math.round(yearlyActualTarget / 12);
+
+        for (let month = 1; month <= monthsInYear; month++) {
+            // 달성률 100~105% 사이로 랜덤하게 설정
+            const achievementRate = 1.0 + (Math.random() * 0.05);
+            const monthlyTargetAmount = Math.round(monthlyActualGoal / achievementRate);
+            const monthlyActualAmount = monthlyActualGoal;
+
+            // 2026년 3월 특수 처리: 현재 3월 초라면 일부만 발생하도록 (기본 1/3 정도)
+            let actualToGen = monthlyActualAmount;
+            if (year === 2026 && month === 3) {
+                actualToGen = Math.round(monthlyActualAmount * 0.33); // 10일치 정도
+            }
+
+            fullActual.push(...generateStandardSalesData(year, month, actualToGen, teamWeights));
+            fullTarget.push(...generateTargetData(year, month, monthlyTargetAmount, teamWeights));
         }
-
-        fullActual.push(...generateStandardSalesData(currentYear, currentMonth, actualAmountForMonth, teamWeights));
-        fullTarget.push(...generateTargetData(currentYear, currentMonth, targetAmountForMonth, teamWeights));
-
-        currentMonth++;
-        if (currentMonth > 12) {
-            currentMonth = 1;
-            currentYear++;
-        }
-        monthlyActualAmount += 1000000000; // 매월 10억 증가
-    }
+    });
 
     return { actual: fullActual, target: fullTarget };
 }

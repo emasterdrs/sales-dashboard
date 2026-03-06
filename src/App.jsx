@@ -57,7 +57,7 @@ import { SalesBI, SETTINGS } from './data/mockEngine';
 import { getYearlyCalendarData } from './lib/dateUtils';
 import { Quote } from './components/Quote';
 import { SettingsView } from './components/SettingsView';
-import { BondDashboard } from './components/BondDashboard';
+// import { BondDashboard } from './components/BondDashboard'; // 채권 대시보드 제거
 
 // 색상 팔레트 최적화
 const TEAM_COLORS = {
@@ -192,7 +192,7 @@ export default function App() {
 
     // Auth & Users
     const [users, setUsers] = useState(() => {
-        const defaultAdmin = { id: 'admin', pw: '123123', name: '관리자', permissions: ['dashboard_team', 'dashboard_type', 'dashboard_bond', 'settings'] };
+        const defaultAdmin = { id: 'admin', pw: '123123', name: '관리자', permissions: ['dashboard_team', 'dashboard_type', 'settings'] };
         try {
             const saved = localStorage.getItem('dashboard_users');
             if (saved) {
@@ -200,9 +200,6 @@ export default function App() {
                 const adminIdx = parsed.findIndex(u => u.id === 'admin');
                 if (adminIdx !== -1) {
                     parsed[adminIdx].pw = '123123';
-                    if (!parsed[adminIdx].permissions.includes('dashboard_bond')) {
-                        parsed[adminIdx].permissions.push('dashboard_bond');
-                    }
                 } else {
                     parsed.push(defaultAdmin);
                 }
@@ -255,9 +252,9 @@ export default function App() {
                 // If JSON is empty (recently initialized), we should probably clear cache too.
                 // We detect explicitly empty by checking actual exists but length is 0.
                 if (jsonContent.actual && jsonContent.actual.length === 0 && jsonContent.lastSync === "") {
-                    // This is our 'fresh start' flag. Clear everything.
+                    // This is our 'fresh start' flag. Clear everything and use the generator.
                     localStorage.removeItem('dashboard_master_data');
-                    return { actual: [], target: [], bonds: [] };
+                    return generateFullDataset();
                 }
                 return cached;
             }
@@ -549,9 +546,7 @@ export default function App() {
                         {loggedInUser.permissions.includes('dashboard_type') && (
                             <SidebarIcon active={view === 'dashboard_type'} icon={PieChartIcon} label="매출 실적 (유형별)" onClick={() => setView('dashboard_type')} />
                         )}
-                        {loggedInUser.permissions.includes('dashboard_bond') && (
-                            <SidebarIcon active={view === 'dashboard_bond'} icon={CreditCard} label="채권 현황" onClick={() => setView('dashboard_bond')} />
-                        )}
+                        {/* 채권 현황 제거 */}
                         {loggedInUser.permissions.includes('settings') && (
                             <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={() => setView('settings')} />
                         )}
@@ -646,7 +641,7 @@ export default function App() {
                 </header>
 
                 <main className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-4 bg-[#f8fafc] md:max-h-screen">
-                    {view === 'settings' ? <SettingsView setMasterData={setMasterData} masterData={masterData} setLastUpdated={setLastUpdated} fontFamily={fontFamily} setFontFamily={setFontFamily} fontMap={fontMap} selectedMonth={selectedMonth} subView={settingsSubView} users={users} setUsers={setUsers} loggedInUser={loggedInUser} /> : view === 'dashboard_bond' ? <BondDashboard masterData={masterData} fCurrency={fCurrency} /> : (
+                    {view === 'settings' ? <SettingsView setMasterData={setMasterData} masterData={masterData} setLastUpdated={setLastUpdated} fontFamily={fontFamily} setFontFamily={setFontFamily} fontMap={fontMap} selectedMonth={selectedMonth} subView={settingsSubView} users={users} setUsers={setUsers} loggedInUser={loggedInUser} /> : (
                         <div className="max-w-[1600px] mx-auto space-y-4">
                             <div className="flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4">
                                 <div className="flex flex-wrap items-center gap-3 bg-white/80 backdrop-blur-md p-2 px-4 rounded-2xl border border-slate-200/60 shadow-sm transition-all hover:shadow-md">
