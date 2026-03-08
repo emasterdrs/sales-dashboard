@@ -11,6 +11,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { generateFullDataset, convertToCSV, downloadCSV } from '../data/generateSalesData';
 import { SALESPERSONS, ALL_CUSTOMERS, ALL_PRODUCTS } from '../data/foodDistributionData';
 
+const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:3001'
+    : 'https://full-clowns-bake.loca.lt';
+
 export function SettingsView({ masterData, setMasterData, setLastUpdated, selectedMonth, subView, users, setUsers, loggedInUser }) {
     const [selectedYear, setSelectedYear] = useState('2026');
 
@@ -1268,7 +1272,7 @@ function LogsSubView() {
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const res = await fetch('https://full-clowns-bake.loca.lt/api/logs');
+            const res = await fetch(`${API_BASE_URL}/api/logs`);
             if (res.ok) {
                 const data = await res.json();
                 setLogs(data);

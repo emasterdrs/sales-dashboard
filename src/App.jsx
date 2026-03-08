@@ -59,6 +59,11 @@ import { Quote } from './components/Quote';
 import { SettingsView } from './components/SettingsView';
 // import { BondDashboard } from './components/BondDashboard'; // 채권 대시보드 제거
 
+// API 주소 설정 (로컬 환경과 터널 환경 자동 전환)
+const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:3001'
+    : 'https://full-clowns-bake.loca.lt';
+
 // 색상 팔레트 최적화
 const TEAM_COLORS = {
     '영업1팀': { main: '#6366f1', grad: 'from-indigo-600 to-blue-500' },
@@ -211,7 +216,7 @@ export default function App() {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const res = await fetch('https://full-clowns-bake.loca.lt/api/users');
+                const res = await fetch(`${API_BASE_URL}/api/users`);
                 if (res.ok) {
                     const dbUsers = await res.json();
                     if (dbUsers && dbUsers.length > 0) {
@@ -230,7 +235,7 @@ export default function App() {
             localStorage.setItem('dashboard_users', JSON.stringify(users));
 
             // 로컬 서버로 사용자 정보 동기화 (계정 생성 시 DB 반영)
-            fetch('https://full-clowns-bake.loca.lt/api/users/sync', {
+            fetch(`${API_BASE_URL}/api/users/sync`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(users)
@@ -498,7 +503,7 @@ export default function App() {
 
                 // 로컬 서버로 접속 로그 전송 추가
                 try {
-                    fetch('https://full-clowns-bake.loca.lt/api/logs', {
+                    fetch(`${API_BASE_URL}/api/logs`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
