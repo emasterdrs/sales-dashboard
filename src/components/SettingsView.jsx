@@ -22,13 +22,15 @@ export function SettingsView({ masterData, setMasterData, setLastUpdated, select
                         {subView === 'bizDays' ? 'Business Days' :
                             subView === 'org' ? 'Organization' :
                                 subView === 'types' ? 'Type Definitions' :
-                                    subView === 'accounts' ? 'Account Management' : 'Sales Data Center'}
+                                    subView === 'accounts' ? 'Account Management' :
+                                        subView === 'logs' ? 'Access Logs' : 'Sales Data Center'}
                     </h2>
                     <p className="text-slate-500 font-bold text-lg">
                         {subView === 'bizDays' ? '영업일수 및 공휴일 상세 설정' :
                             subView === 'org' ? '조직 및 인원 구성 관리' :
                                 subView === 'types' ? '시스템 유형 및 코드 관리' :
-                                    subView === 'accounts' ? '계정 권한 관리' : '매출 및 목표 데이터 업로드'}
+                                    subView === 'accounts' ? '계정 권한 관리' :
+                                        subView === 'logs' ? '시스템 접속 이력 모니터링' : '매출 및 목표 데이터 업로드'}
                     </p>
                 </div>
 
@@ -61,6 +63,7 @@ export function SettingsView({ masterData, setMasterData, setLastUpdated, select
                     {subView === 'types' && <TypesSubView setMasterData={setMasterData} masterData={masterData} />}
                     {subView === 'data' && <DataUploadSubView setMasterData={setMasterData} setLastUpdated={setLastUpdated} masterData={masterData} />}
                     {subView === 'accounts' && <AccountsSubView users={users} setUsers={setUsers} loggedInUser={loggedInUser} />}
+                    {subView === 'logs' && <LogsSubView />}
                 </motion.div>
             </AnimatePresence>
         </div>
@@ -1252,6 +1255,103 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
                 </button>
             </div>
         </div >
+    );
+}
+
+/**
+ * 5. 접속 로그 모니터링
+ */
+function LogsSubView() {
+    const [logs, setLogs] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchLogs = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch('https://full-clowns-bake.loca.lt/api/logs');
+            if (res.ok) {
+                const data = await res.json();
+                setLogs(data);
+            }
+        } catch (e) {
+            console.error('로그 로드 실패:', e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchLogs();
+    }, []);
+
+    return (
+        <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl">
+                        <Globe size={20} />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-black text-slate-800 uppercase tracking-tighter">System Access Logs</h3>
+                        <p className="text-xs text-slate-400 font-bold">실시간 시스템 접속 및 활동 내역 (최근 500건)</p>
+                    </div>
+                </div>
+                <button
+                    onClick={fetchLogs}
+                    className="px-6 py-2 bg-white border border-slate-200 rounded-xl text-sm font-black text-slate-600 hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2"
+                >
+                    <Zap size={14} className="text-amber-500" />
+                    새로고침
+                </button>
+            </div>
+
+            <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                    <thead>
+                        <tr className="bg-slate-50 border-b border-slate-100">
+                            <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">시간</th>
+                            <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">사용자</th>
+                            <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">ID</th>
+                            <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">활동</th>
+                            <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">IP 주소</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                        {loading ? (
+                            <tr>
+                                <td colSpan="5" className="px-8 py-20 text-center font-bold text-slate-400">데이터를 불러오는 중...</td>
+                            </tr>
+                        ) : logs.length === 0 ? (
+                            <tr>
+                                <td colSpan="5" className="px-8 py-20 text-center font-bold text-slate-400">접속 기록이 없습니다.</td>
+                            </tr>
+                        ) : logs.map((log) => (
+                            <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="px-8 py-4 text-sm font-bold text-slate-600">
+                                    {new Date(log.timestamp).toLocaleString('ko-KR')}
+                                </td>
+                                <td className="px-8 py-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-7 h-7 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center text-[10px] font-black">
+                                            {log.user_name?.slice(0, 1)}
+                                        </div>
+                                        <span className="text-sm font-black text-slate-800">{log.user_name}</span>
+                                    </div>
+                                </td>
+                                <td className="px-8 py-4 text-xs font-bold text-slate-400">@{log.user_id}</td>
+                                <td className="px-8 py-4">
+                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black ${log.event === 'LOGIN' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-500'
+                                        }`}>
+                                        {log.event}
+                                    </span>
+                                </td>
+                                <td className="px-8 py-4 text-xs font-mono text-slate-400 text-right">{log.ip || 'Unknown'}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     );
 }
 

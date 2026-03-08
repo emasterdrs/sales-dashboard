@@ -465,12 +465,26 @@ export default function App() {
         setPath([...path, { level: nextLvl, id: item.id || item.name, name: item.name }]);
     };
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
         try {
             const user = users.find(u => u.id === loginId && u.pw === loginPw);
             if (user) {
                 setLoggedInUser(user);
+
+                // 로컬 서버로 접속 로그 전송 추가
+                try {
+                    fetch('https://full-clowns-bake.loca.lt/api/logs', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id: user.id,
+                            user_name: user.name,
+                            event: 'LOGIN'
+                        })
+                    }).catch(err => console.error('로그 서버 연결 실패:', err));
+                } catch (e) { }
+
                 setLoginId('');
                 setLoginPw('');
                 if (user.permissions.includes('dashboard_team')) setView('dashboard_team');
@@ -564,7 +578,8 @@ export default function App() {
                                         { id: 'org', name: '조직 및 인원' },
                                         { id: 'types', name: '유형명' },
                                         { id: 'data', name: '판매 데이터' },
-                                        { id: 'accounts', name: '계정 관리' }
+                                        { id: 'accounts', name: '계정 관리' },
+                                        { id: 'logs', name: '접속 로그' }
                                     ].map(sub => (
                                         <button
                                             key={sub.id}
