@@ -209,8 +209,32 @@ export default function App() {
         return [defaultAdmin];
     });
     useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const res = await fetch('https://full-clowns-bake.loca.lt/api/users');
+                if (res.ok) {
+                    const dbUsers = await res.json();
+                    if (dbUsers && dbUsers.length > 0) {
+                        setUsers(dbUsers);
+                    }
+                }
+            } catch (e) {
+                console.error('사용자 목록 로드 실패 (DB 서버 확인 필요):', e);
+            }
+        };
+        fetchUsers();
+    }, []);
+
+    useEffect(() => {
         try {
             localStorage.setItem('dashboard_users', JSON.stringify(users));
+
+            // 로컬 서버로 사용자 정보 동기화 (계정 생성 시 DB 반영)
+            fetch('https://full-clowns-bake.loca.lt/api/users/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(users)
+            }).catch(err => console.error('사용자 동기화 실패:', err));
         } catch (e) { }
     }, [users]);
 
