@@ -216,16 +216,16 @@ export default function App() {
 
     const [loggedInUser, setLoggedInUser] = useState(() => {
         try {
-            const saved = localStorage.getItem('dashboard_logged_in_user');
+            const saved = sessionStorage.getItem('dashboard_logged_in_user');
             return saved ? JSON.parse(saved) : null;
         } catch (e) { return null; }
     });
 
     useEffect(() => {
         if (loggedInUser) {
-            localStorage.setItem('dashboard_logged_in_user', JSON.stringify(loggedInUser));
+            sessionStorage.setItem('dashboard_logged_in_user', JSON.stringify(loggedInUser));
         } else {
-            localStorage.removeItem('dashboard_logged_in_user');
+            sessionStorage.removeItem('dashboard_logged_in_user');
         }
     }, [loggedInUser]);
 
