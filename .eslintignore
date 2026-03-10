@@ -1,0 +1,10 @@
+dist/
+node_modules/
+scripts/
+update_data.js
+update_data.mjs
+vite.config.js
+postcss.config.js
+tailwind.config.js
+server.js
+auto_sync.bat
