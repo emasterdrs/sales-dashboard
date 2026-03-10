@@ -9,10 +9,11 @@
  */
 export const SETTINGS = {
     businessDays: {
-        '2026-01': 22, // 1월 영업일수
-        '2026-02': 17, // 2월 영업일수
+        '2026-01': 22,
+        '2026-02': 17,
     },
-    currentBusinessDay: 9, // 현재 9일차라고 가정
+    currentBusinessDay: 9,
+    WEIGHT_CONVERSION_FACTOR: 4500, // 1kg당 평균 단가 (목표 산출용)
 };
 
 /**
@@ -155,11 +156,11 @@ export class SalesBI {
             currentActualTotal = (currentActualTotal / currentBizDay) * businessDays;
         }
 
-        const currentTargetTotal = isAmt ? targetAmt : (targetAmt / 4500);
+        const currentTargetTotal = isAmt ? targetAmt : (targetAmt / SETTINGS.WEIGHT_CONVERSION_FACTOR);
         const currentLastYearTotal = isAmt ? lyAmt : lyWeight;
         const currentLastMonthTotal = isAmt ? lmAmt : lmWeight;
         const cumulativeActualTotal = isAmt ? cumActualAmt : cumActualWeight;
-        const cumulativeTargetTotal = isAmt ? cumTargetAmt : (cumTargetAmt / 4500);
+        const cumulativeTargetTotal = isAmt ? cumTargetAmt : (cumTargetAmt / SETTINGS.WEIGHT_CONVERSION_FACTOR);
 
         const achievementRate = currentTargetTotal > 0 ? (currentActualTotal / currentTargetTotal) * 100 : (currentActualTotal > 0 ? 100 : 0);
         const progressRateCurrent = (bizDayInfo.currentBusinessDay / businessDays) * 100;
@@ -334,10 +335,10 @@ export class SalesBI {
 
         if (metricType === 'weight') {
             actual = weight;
-            target = d.target / 4500;
+            target = d.target / SETTINGS.WEIGHT_CONVERSION_FACTOR;
             lastYear = d.lastYearWeight;
             lastMonth = d.lastMonthWeight;
-            cumulativeTarget = d.cumulativeTarget / 4500;
+            cumulativeTarget = d.cumulativeTarget / SETTINGS.WEIGHT_CONVERSION_FACTOR;
             cumulativeActual = d.cumulativeWeight;
         }
 

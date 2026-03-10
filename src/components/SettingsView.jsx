@@ -11,11 +11,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { generateFullDataset, convertToCSV, downloadCSV } from '../data/generateSalesData';
 import { SALESPERSONS, ALL_CUSTOMERS, ALL_PRODUCTS } from '../data/foodDistributionData';
 
-const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:3001'
-    : 'https://full-clowns-bake.loca.lt';
+import { supabase } from '../lib/supabase';
 
-export function SettingsView({ masterData, setMasterData, setLastUpdated, selectedMonth, subView, users, setUsers, loggedInUser }) {
+export function SettingsView({ masterData, setMasterData, fetchCloudData, selectedMonth, subView, profile, session }) {
     const [selectedYear, setSelectedYear] = useState('2026');
 
     return (
@@ -26,14 +24,14 @@ export function SettingsView({ masterData, setMasterData, setLastUpdated, select
                         {subView === 'bizDays' ? 'Business Days' :
                             subView === 'org' ? 'Organization' :
                                 subView === 'types' ? 'Type Definitions' :
-                                    subView === 'accounts' ? 'Account Management' :
+                                    subView === 'accounts' ? 'Member Management' :
                                         subView === 'logs' ? 'Access Logs' : 'Sales Data Center'}
                     </h2>
                     <p className="text-slate-500 font-bold text-lg">
                         {subView === 'bizDays' ? '영업일수 및 공휴일 상세 설정' :
                             subView === 'org' ? '조직 및 인원 구성 관리' :
                                 subView === 'types' ? '시스템 유형 및 코드 관리' :
-                                    subView === 'accounts' ? '계정 권한 관리' :
+                                    subView === 'accounts' ? '멤버 초대 및 권한 승인' :
                                         subView === 'logs' ? '시스템 접속 이력 모니터링' : '매출 및 목표 데이터 업로드'}
                     </p>
                 </div>
@@ -62,12 +60,12 @@ export function SettingsView({ masterData, setMasterData, setLastUpdated, select
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.3 }}
                 >
-                    {subView === 'bizDays' && <BusinessDaysSubView year={selectedYear} />}
-                    {subView === 'org' && <OrganizationSubView setMasterData={setMasterData} masterData={masterData} />}
-                    {subView === 'types' && <TypesSubView setMasterData={setMasterData} masterData={masterData} />}
-                    {subView === 'data' && <DataUploadSubView setMasterData={setMasterData} setLastUpdated={setLastUpdated} masterData={masterData} />}
-                    {subView === 'accounts' && <AccountsSubView users={users} setUsers={setUsers} loggedInUser={loggedInUser} />}
-                    {subView === 'logs' && <LogsSubView />}
+                    {subView === 'bizDays' && <BusinessDaysSubView year={selectedYear} profile={profile} />}
+                    {subView === 'org' && <OrganizationSubView setMasterData={setMasterData} masterData={masterData} profile={profile} />}
+                    {subView === 'types' && <TypesSubView setMasterData={setMasterData} masterData={masterData} profile={profile} />}
+                    {subView === 'data' && <DataUploadSubView setMasterData={setMasterData} masterData={masterData} profile={profile} />}
+                    {subView === 'accounts' && <AccountsSubView profile={profile} />}
+                    {subView === 'logs' && <LogsSubView profile={profile} />}
                 </motion.div>
             </AnimatePresence>
         </div>
@@ -77,37 +75,61 @@ export function SettingsView({ masterData, setMasterData, setLastUpdated, select
 /**
  * 1. 영업일수 상세 설정 (달력형)
  */
-function BusinessDaysSubView({ year }) {
+function BusinessDaysSubView({ year, profile }) {
     const calendarDataRaw = useMemo(() => getYearlyCalendarData(year), [year]);
     const [editingMonth, setEditingMonth] = useState(null);
     const [holidayNames, setHolidayNames] = useState({});
     const [toggledDays, setToggledDays] = useState({});
 
-    // 브라우저 저장소(localStorage)에서 데이터 로드
+    // 서버 및 브라우저 저장소에서 데이터 로드
     useEffect(() => {
-        try {
-            const savedData = localStorage.getItem('dashboard_settings');
-            const data = savedData ? JSON.parse(savedData) : {};
-            setHolidayNames(data[`holidayNames_${year}`] || {});
-            setToggledDays(data[`toggledDays_${year}`] || {});
-        } catch (e) {
-            console.warn('Failed to load from localStorage', e);
-        }
-    }, [year]);
-
-    const toggleEditAndSave = (month, isCurrentlyEditing) => {
-        if (isCurrentlyEditing) {
-            // 로컬 스토리지에 저장 처리
+        const loadSettings = async () => {
+            if (!profile?.company_id) return;
             try {
-                const savedData = localStorage.getItem('dashboard_settings');
-                let data = savedData ? JSON.parse(savedData) : {};
+                const { data, error } = await supabase
+                    .from('settings')
+                    .select('data')
+                    .eq('company_id', profile.company_id)
+                    .single();
 
-                data[`holidayNames_${year}`] = holidayNames;
-                data[`toggledDays_${year}`] = toggledDays;
-
-                localStorage.setItem('dashboard_settings', JSON.stringify(data));
+                if (data && data.data) {
+                    const settings = data.data;
+                    if (settings[`holidayNames_${year}`]) setHolidayNames(settings[`holidayNames_${year}`]);
+                    if (settings[`toggledDays_${year}`]) setToggledDays(settings[`toggledDays_${year}`]);
+                }
             } catch (e) {
-                console.warn('Failed to save to localStorage', e);
+                console.warn('Failed to load settings from Supabase', e);
+            }
+        };
+        loadSettings();
+    }, [year, profile]);
+
+    const toggleEditAndSave = async (month, isCurrentlyEditing) => {
+        if (isCurrentlyEditing) {
+            try {
+                // 1. Get current settings
+                const { data: current, error: fetchErr } = await supabase
+                    .from('settings')
+                    .select('data')
+                    .eq('company_id', profile.company_id)
+                    .single();
+
+                let newData = current?.data || {};
+                newData[`holidayNames_${year}`] = holidayNames;
+                newData[`toggledDays_${year}`] = toggledDays;
+
+                // 2. Upsert settings
+                const { error: upsertErr } = await supabase
+                    .from('settings')
+                    .upsert({ company_id: profile.company_id, data: newData });
+
+                if (upsertErr) throw upsertErr;
+
+                // Update local storage too for backward compatibility if needed
+                localStorage.setItem('dashboard_settings', JSON.stringify(newData));
+
+            } catch (e) {
+                console.warn('Failed to save settings to Supabase', e);
                 alert('설정 저장 중 오류가 발생했습니다.');
             }
             setEditingMonth(null);
@@ -300,8 +322,8 @@ function BusinessDaysSubView({ year }) {
 /**
  * 2. 조직 및 인원 설정
  */
-function OrganizationSubView({ setMasterData, masterData }) {
-    const [teams, setTeams] = useState([{ id: 1, name: 'FD팀' }, { id: 2, name: 'FC팀' }, { id: 3, name: 'FR팀' }, { id: 4, name: 'FS팀' }, { id: 5, name: 'FL팀' }]);
+function OrganizationSubView({ setMasterData, masterData, profile }) {
+    const [teams, setTeams] = useState([{ id: 1, name: '영업팀' }]);
     const [salespersons, setSalespersons] = useState([]);
     const [selectedTeam, setSelectedTeam] = useState(null);
 
@@ -315,34 +337,55 @@ function OrganizationSubView({ setMasterData, masterData }) {
     const [selectedSpIds, setSelectedSpIds] = useState(new Set());
 
     useEffect(() => {
-        try {
-            const savedData = localStorage.getItem('dashboard_settings');
-            const data = savedData ? JSON.parse(savedData) : {};
-            // Validate schema robustly to prevent runtime crashes from old data structures
-            if (data.teams && Array.isArray(data.teams) && typeof data.teams[0] === 'object') {
-                setTeams(data.teams);
-            }
-            if (data.salespersons && Array.isArray(data.salespersons)) {
-                setSalespersons(data.salespersons);
-            }
-        } catch (e) {
-            console.warn('Failed to load from localStorage', e);
-        }
-    }, []);
+        const loadOrg = async () => {
+            if (!profile?.company_id) return;
+            try {
+                const { data, error } = await supabase
+                    .from('settings')
+                    .select('data')
+                    .eq('company_id', profile.company_id)
+                    .single();
 
-    const saveChanges = (newTeams, newSps) => {
+                if (data && data.data) {
+                    const settings = data.data;
+                    if (settings.teams) setTeams(settings.teams);
+                    if (settings.salespersons) setSalespersons(settings.salespersons);
+                }
+            } catch (e) {
+                console.warn('Failed to load org settings from Supabase', e);
+            }
+        };
+        loadOrg();
+    }, [profile]);
+
+    const saveChanges = async (newTeams, newSps) => {
+        if (!profile?.company_id) return;
         try {
-            const savedData = localStorage.getItem('dashboard_settings');
-            let data = savedData ? JSON.parse(savedData) : {};
-            data.teams = newTeams;
-            data.salespersons = newSps;
-            localStorage.setItem('dashboard_settings', JSON.stringify(data));
-            // Force re-calc of mock engine bucketting
+            // 1. Get current settings
+            const { data: current, error: fetchErr } = await supabase
+                .from('settings')
+                .select('data')
+                .eq('company_id', profile.company_id)
+                .single();
+
+            let newData = current?.data || {};
+            newData.teams = newTeams;
+            newData.salespersons = newSps;
+
+            // 2. Upsert settings
+            const { error: upsertErr } = await supabase
+                .from('settings')
+                .upsert({ company_id: profile.company_id, data: newData });
+
+            if (upsertErr) throw upsertErr;
+
+            localStorage.setItem('dashboard_settings', JSON.stringify(newData));
+
             if (setMasterData && masterData) {
                 setMasterData({ ...masterData });
             }
         } catch (e) {
-            console.warn('Failed to save to localStorage', e);
+            console.warn('Failed to save org to Supabase', e);
         }
     };
 
@@ -700,51 +743,61 @@ function OrganizationSubView({ setMasterData, masterData }) {
 /**
  * 3. 유형명 설정
  */
-function TypesSubView({ masterData, setMasterData }) {
+function TypesSubView({ masterData, setMasterData, profile }) {
     const [types, setTypes] = useState([
-        { id: 'T01', name: '치즈' },
-        { id: 'T02', name: '소스' },
-        { id: 'T03', name: '피자' },
-        { id: 'T04', name: '빵크림' },
-        { id: 'T05', name: '이스트' },
-        { id: 'T06', name: '대소공장유탕류' },
-        { id: 'T07', name: '대소공장밀키트' },
-        { id: 'T08', name: '냉동감자' },
-        { id: 'T09', name: '해외소싱상품류' },
-        { id: 'T10', name: '국내소싱상품류' }
+        { id: 'T01', name: '영업유형' }
     ]);
     const [editingTypeId, setEditingTypeId] = useState(null);
     const [typeEditName, setTypeEditName] = useState('');
     const [selectedTypeIds, setSelectedTypeIds] = useState(new Set());
 
     useEffect(() => {
-        try {
-            const savedData = localStorage.getItem('dashboard_settings');
-            if (savedData) {
-                const parsed = JSON.parse(savedData);
-                if (parsed.types && Array.isArray(parsed.types) && parsed.types.length > 0) {
-                    setTypes(parsed.types);
+        const loadTypes = async () => {
+            if (!profile?.company_id) return;
+            try {
+                const { data, error } = await supabase
+                    .from('settings')
+                    .select('data')
+                    .eq('company_id', profile.company_id)
+                    .single();
+
+                if (data && data.data && data.data.types) {
+                    setTypes(data.data.types);
                 }
+            } catch (e) {
+                console.error('Settings load failed from Supabase', e);
             }
-        } catch (e) {
-            console.error('Settings load failed', e);
-        }
-    }, []);
+        };
+        loadTypes();
+    }, [profile]);
 
-    const saveChanges = (updatedTypes) => {
+    const saveChanges = async (updatedTypes) => {
+        if (!profile?.company_id) return;
         try {
-            const currentData = JSON.parse(localStorage.getItem('dashboard_settings') || '{}');
-            localStorage.setItem('dashboard_settings', JSON.stringify({
-                ...currentData,
-                types: updatedTypes
-            }));
+            // 1. Get current settings
+            const { data: current, error: fetchErr } = await supabase
+                .from('settings')
+                .select('data')
+                .eq('company_id', profile.company_id)
+                .single();
 
-            // Sync engine config to re-trigger calculations using new set
+            let newData = current?.data || {};
+            newData.types = updatedTypes;
+
+            // 2. Upsert settings
+            const { error: upsertErr } = await supabase
+                .from('settings')
+                .upsert({ company_id: profile.company_id, data: newData });
+
+            if (upsertErr) throw upsertErr;
+
+            localStorage.setItem('dashboard_settings', JSON.stringify(newData));
+
             if (masterData) {
                 setMasterData({ ...masterData });
             }
         } catch (e) {
-            console.error('Save failed', e);
+            console.error('Save to Supabase failed', e);
         }
     };
 
@@ -930,13 +983,12 @@ function TypesSubView({ masterData, setMasterData }) {
 /**
  * 4. 데이터 업로드 센터 (원본 스타일 유지하되 정제)
  */
-function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
+function DataUploadSubView({ setMasterData, masterData, profile }) {
     const salesInputRef = useRef(null);
     const targetInputRef = useRef(null);
-    // const bondInputRef = useRef(null); // 채권 제거
 
     // 파일 선택 상태
-    const [selectedFiles, setSelectedFiles] = useState({ sales: null, target: null, bonds: null });
+    const [selectedFiles, setSelectedFiles] = useState({ sales: null, target: null });
     // 최근 업로드 정보
     const [uploadHistory, setUploadHistory] = useState(() => {
         try {
@@ -948,11 +1000,12 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
         } catch (e) {
             return {
                 sales: { filename: '-', time: '-' },
-                target: { filename: '-', time: '-' },
-                bonds: { filename: '-', time: '-' }
+                target: { filename: '-', time: '-' }
             };
         }
     });
+
+    const [isUploading, setIsUploading] = useState(false);
 
     useEffect(() => {
         localStorage.setItem('dashboard_upload_history', JSON.stringify(uploadHistory));
@@ -972,8 +1025,9 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
             return;
         }
 
+        setIsUploading(true);
         const reader = new FileReader();
-        reader.onload = (evt) => {
+        reader.onload = async (evt) => {
             try {
                 const bstr = evt.target.result;
                 const wb = window.XLSX.read(bstr, { type: 'binary' });
@@ -986,46 +1040,59 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
                     return;
                 }
 
-                // 데이터 정제 로직
-                uploadedRows = uploadedRows.map(item => {
-                    const newItem = { ...item };
-                    const fieldsToClean = ['영업팀', '영업사원명', '거래처코드', '거래처명', '품목유형', '품목코드', '품목명'];
-                    fieldsToClean.forEach(f => {
-                        if (newItem[f] !== undefined && newItem[f] !== null) {
-                            // 앞의 작은따옴표(') 제거 및 트리밍
-                            newItem[f] = String(newItem[f]).trim().replace(/^'/, '');
-                        }
-                    });
-                    return newItem;
-                });
+                // 1. 데이터 매핑 및 필터링
+                const months = [...new Set(uploadedRows.map(r => String(r['년도월'])))];
 
-                // 스마트 병합: 업로드된 파일의 '년도월' 컬렉션
-                const monthsInFile = [...new Set(uploadedRows.map(r => String(r['년도월'])))];
-
-                setMasterData(prev => {
-                    const currentData = type === 'sales' ? prev.actual : (type === 'target' ? prev.target : prev.bonds || []);
-                    // 기존 데이터에서 업로드된 달과 겹치는 데이터 제거 (채권은 년도월이 없을 수도 있어 전체 교체 or 매칭 전략 필요)
-                    // 채권 데이터는 보통 '전체 리프레시' 성격이 강함.
-                    let mergedData;
-                    if (type === 'bonds') {
-                        mergedData = uploadedRows;
+                const mappedData = uploadedRows.map(row => {
+                    const cleanValue = (val) => String(val || '').trim().replace(/^'/, '');
+                    if (type === 'sales') {
+                        return {
+                            company_id: profile.company_id,
+                            year_month: cleanValue(row['년도월']),
+                            team_name: cleanValue(row['영업팀']),
+                            person_name: cleanValue(row['영업사원명']),
+                            customer_code: cleanValue(row['거래처코드']),
+                            customer_name: cleanValue(row['거래처명']),
+                            type_name: cleanValue(row['품목유형']),
+                            item_code: cleanValue(row['품목코드']),
+                            item_name: cleanValue(row['품목명']),
+                            amount: Number(row['금액'] || row['매출금액'] || 0)
+                        };
                     } else {
-                        // 기존 데이터에서 업로드된 달과 겹치는 데이터 제거
-                        const filteredData = currentData.filter(r => !monthsInFile.includes(String(r['년도월'])));
-                        // 새로운 데이터 합류
-                        mergedData = [...filteredData, ...uploadedRows];
+                        return {
+                            company_id: profile.company_id,
+                            year_month: cleanValue(row['년도월']),
+                            team_name: cleanValue(row['영업팀']),
+                            person_name: cleanValue(row['영업사원명']),
+                            amount: Number(row['금액'] || row['목표금액'] || 0)
+                        };
                     }
-
-                    return {
-                        ...prev,
-                        [type === 'sales' ? 'actual' : (type === 'target' ? 'target' : 'bonds')]: mergedData
-                    };
                 });
+
+                // 2. Supabase 동기화 (기존 해당 월 데이터 삭제 후 삽입)
+                const tableName = type === 'sales' ? 'sales_actual' : 'sales_target';
+
+                const { error: delError } = await supabase
+                    .from(tableName)
+                    .delete()
+                    .eq('company_id', profile.company_id)
+                    .in('year_month', months);
+
+                if (delError) throw delError;
+
+                const CHUNK_SIZE = 1000;
+                for (let i = 0; i < mappedData.length; i += CHUNK_SIZE) {
+                    const chunk = mappedData.slice(i, i + CHUNK_SIZE);
+                    const { error: insError } = await supabase
+                        .from(tableName)
+                        .insert(chunk);
+                    if (insError) throw insError;
+                }
+
+                alert(`${type === 'sales' ? '매출' : '목표'} 데이터 ${mappedData.length}건이 업로드되었습니다.`);
 
                 const now = new Date();
                 const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-                if (setLastUpdated) setLastUpdated(timeStr);
 
                 setUploadHistory(prev => ({
                     ...prev,
@@ -1034,12 +1101,13 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
 
                 setSelectedFiles(prev => ({ ...prev, [type]: null }));
                 if (type === 'sales') salesInputRef.current.value = '';
-                else if (type === 'target') targetInputRef.current.value = '';
+                if (type === 'target') targetInputRef.current.value = '';
 
-                alert(`${type === 'sales' ? '매출실적' : '목표'} 업로드 성공!`);
-            } catch (error) {
-                console.error(error);
-                alert('파일 처리 중 오류가 발생했습니다.');
+            } catch (e) {
+                console.error('Upload failed:', e);
+                alert(`업로드 중 오류가 발생했습니다: ${e.message}`);
+            } finally {
+                setIsUploading(false);
             }
         };
         reader.readAsBinaryString(file);
@@ -1104,6 +1172,12 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
     const handleResetData = () => {
         if (window.confirm('모든 매출 및 목표 데이터를 초기화하시겠습니까? 초기화 후에는 복구할 수 없습니다.')) {
             setMasterData({ actual: [], target: [] });
+
+            // 서버 데이터 초기화 추가
+            fetch(`${API_BASE_URL}/api/master-data/reset`, {
+                method: 'POST'
+            }).catch(e => console.error('Server reset failed', e));
+
             if (setLastUpdated) {
                 const now = new Date();
                 setLastUpdated(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
@@ -1266,95 +1340,16 @@ function DataUploadSubView({ setMasterData, setLastUpdated, masterData }) {
  * 5. 접속 로그 모니터링
  */
 function LogsSubView() {
-    const [logs, setLogs] = useState([]);
-    const [loading, setLoading] = useState(true);
-
-    const fetchLogs = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/logs`);
-            if (res.ok) {
-                const data = await res.json();
-                setLogs(data);
-            }
-        } catch (e) {
-            console.error('로그 로드 실패:', e);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchLogs();
-    }, []);
-
     return (
-        <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm">
-            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl">
-                        <Globe size={20} />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-black text-slate-800 uppercase tracking-tighter">System Access Logs</h3>
-                        <p className="text-xs text-slate-400 font-bold">실시간 시스템 접속 및 활동 내역 (최근 500건)</p>
-                    </div>
-                </div>
-                <button
-                    onClick={fetchLogs}
-                    className="px-6 py-2 bg-white border border-slate-200 rounded-xl text-sm font-black text-slate-600 hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2"
-                >
-                    <Zap size={14} className="text-amber-500" />
-                    새로고침
-                </button>
+        <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm p-20 text-center">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mx-auto mb-6">
+                <Globe size={40} />
             </div>
-
-            <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                    <thead>
-                        <tr className="bg-slate-50 border-b border-slate-100">
-                            <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">시간</th>
-                            <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">사용자</th>
-                            <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">ID</th>
-                            <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">활동</th>
-                            <th className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">IP 주소</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                        {loading ? (
-                            <tr>
-                                <td colSpan="5" className="px-8 py-20 text-center font-bold text-slate-400">데이터를 불러오는 중...</td>
-                            </tr>
-                        ) : logs.length === 0 ? (
-                            <tr>
-                                <td colSpan="5" className="px-8 py-20 text-center font-bold text-slate-400">접속 기록이 없습니다.</td>
-                            </tr>
-                        ) : logs.map((log) => (
-                            <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="px-8 py-4 text-sm font-bold text-slate-600">
-                                    {new Date(log.timestamp).toLocaleString('ko-KR')}
-                                </td>
-                                <td className="px-8 py-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-7 h-7 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center text-[10px] font-black">
-                                            {log.user_name?.slice(0, 1)}
-                                        </div>
-                                        <span className="text-sm font-black text-slate-800">{log.user_name}</span>
-                                    </div>
-                                </td>
-                                <td className="px-8 py-4 text-xs font-bold text-slate-400">@{log.user_id}</td>
-                                <td className="px-8 py-4">
-                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black ${log.event === 'LOGIN' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-500'
-                                        }`}>
-                                        {log.event}
-                                    </span>
-                                </td>
-                                <td className="px-8 py-4 text-xs font-mono text-slate-400 text-right">{log.ip || 'Unknown'}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+            <h3 className="text-2xl font-black text-slate-800 mb-2">Cloud Activity Logs</h3>
+            <p className="text-slate-400 font-bold max-w-md mx-auto">
+                클라우드 기반의 실시간 시스템 활동 로그 서비스 준비 중입니다.<br />
+                조만간 모든 구성원의 활동 내역을 확인하실 수 있습니다.
+            </p>
         </div>
     );
 }
@@ -1379,152 +1374,179 @@ function SettingCard({ title, icon: Icon, desc, extra, children }) {
     );
 }
 
-function AccountsSubView({ users, setUsers, loggedInUser }) {
-    const [editingUserId, setEditingUserId] = useState(null);
-    const [editForm, setEditForm] = useState({ id: '', pw: '', name: '', permissions: [] });
+function AccountsSubView({ profile }) {
+    const [companyInfo, setCompanyInfo] = useState(null);
+    const [members, setMembers] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const handleAddUser = () => {
-        setEditingUserId('new');
-        setEditForm({ id: '', pw: '', name: '', permissions: [] });
+    const fetchData = async () => {
+        if (!profile?.company_id) return;
+        setIsLoading(true);
+        try {
+            // 1. Fetch company details
+            const { data: company, error: compErr } = await supabase
+                .from('companies')
+                .select('*')
+                .eq('id', profile.company_id)
+                .single();
+            if (compErr) throw compErr;
+            setCompanyInfo(company);
+
+            // 2. Fetch all members
+            const { data: mems, error: memErr } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('company_id', profile.company_id)
+                .order('created_at', { ascending: true });
+            if (memErr) throw memErr;
+            setMembers(mems);
+        } catch (e) {
+            console.error('Failed to fetch members:', e);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handleEditUser = (user) => {
-        setEditingUserId(user.id);
-        setEditForm({ ...user });
+    useEffect(() => {
+        fetchData();
+    }, [profile]);
+
+    const handleApprove = async (id) => {
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ status: 'approved' })
+                .eq('id', id);
+            if (error) throw error;
+            fetchData();
+        } catch (e) {
+            alert('승인 중 오류가 발생했습니다.');
+        }
     };
 
-    const handleDeleteUser = (id) => {
-        if (id === 'admin') {
-            alert('기본 관리자 계정은 삭제할 수 없습니다.');
-            return;
-        }
-        if (id === loggedInUser.id) {
-            alert('현재 로그인 중인 계정은 삭제할 수 없습니다.');
-            return;
-        }
-        if (confirm('해당 계정을 삭제하시겠습니까?')) {
-            setUsers(users.filter(u => u.id !== id));
+    const handleReject = async (id) => {
+        if (!confirm('가입 신청을 거절하시겠습니까? 해당 사용자의 프로필 정보가 업데이트됩니다.')) return;
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ company_id: null, status: 'pending' }) // Reset to pending/none
+                .eq('id', id);
+            if (error) throw error;
+            fetchData();
+        } catch (e) {
+            alert('처리에 실패했습니다.');
         }
     };
 
-    const handleSaveUser = () => {
-        if (!editForm.id || !editForm.pw || !editForm.name) {
-            alert('필수 정보를 모두 입력해주세요.');
-            return;
-        }
-        if (editForm.permissions.length === 0) {
-            alert('최소 1개의 권한을 선택해야 합니다.');
-            return;
-        }
+    const handleUpdateCode = async () => {
+        const newCode = prompt('새로운 가입 코드를 입력하세요 (최소 4자):', companyInfo.registration_code);
+        if (!newCode || newCode.length < 4) return;
 
-        if (editingUserId === 'new') {
-            if (users.some(u => u.id === editForm.id)) {
-                alert('이미 존재하는 아이디입니다.');
-                return;
-            }
-            setUsers([...users, editForm]);
-        } else {
-            setUsers(users.map(u => u.id === editingUserId ? editForm : u));
+        try {
+            const { error } = await supabase
+                .from('companies')
+                .update({ registration_code: newCode })
+                .eq('id', profile.company_id);
+            if (error) throw error;
+            fetchData();
+        } catch (e) {
+            alert('업데이트 실패: ' + e.message);
         }
-        setEditingUserId(null);
     };
 
-    const togglePermission = (perm) => {
-        setEditForm(prev => ({
-            ...prev,
-            permissions: prev.permissions.includes(perm)
-                ? prev.permissions.filter(p => p !== perm)
-                : [...prev.permissions, perm]
-        }));
+    const handleUpdatePW = async () => {
+        const newPW = prompt('새로운 가입 비밀번호를 입력하세요:', companyInfo.registration_password);
+        if (!newPW) return;
+
+        try {
+            const { error } = await supabase
+                .from('companies')
+                .update({ registration_password: newPW })
+                .eq('id', profile.company_id);
+            if (error) throw error;
+            fetchData();
+        } catch (e) {
+            alert('업데이트 실패: ' + e.message);
+        }
     };
 
-    const permissionLabels = {
-        'dashboard_team': '매출 실적 (팀별)',
-        'dashboard_type': '매출 실적 (유형별)',
-        'settings': '설정'
-    };
+    if (isLoading) return <div className="p-20 text-center text-slate-400 font-bold">Loading members...</div>;
+
+    const pendingMembers = members.filter(m => m.status === 'pending');
+    const approvedMembers = members.filter(m => m.status === 'approved');
 
     return (
-        <SettingCard title="계정 관리" icon={Users} desc="시스템 접근 권한 및 계정 정보 관리">
-            <div className="space-y-4">
-                {users.map((user) => (
-                    <div key={user.id} className="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        {editingUserId === user.id ? (
-                            <div className="flex-1 space-y-4 w-full">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <input type="text" placeholder="아이디" value={editForm.id} disabled={user.id === 'admin'} onChange={e => setEditForm({ ...editForm, id: e.target.value })} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold disabled:opacity-50" />
-                                    <input type="password" placeholder="비밀번호" value={editForm.pw} onChange={e => setEditForm({ ...editForm, pw: e.target.value })} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold" />
-                                    <input type="text" placeholder="이름" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold" />
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {Object.entries(permissionLabels).map(([key, label]) => (
-                                        <label key={key} className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-100">
-                                            <input type="checkbox" checked={editForm.permissions.includes(key)} onChange={() => togglePermission(key)} className="w-4 h-4 text-indigo-600 rounded" />
-                                            <span className="text-xs font-black text-slate-700">{label}</span>
-                                        </label>
-                                    ))}
+        <div className="space-y-8">
+            {/* Company Access Credentials */}
+            <SettingCard title="회사 가입 정보" icon={Building2} desc="새 구성원이 가입할 때 사용하는 코드와 비밀번호입니다.">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex flex-col gap-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Join Code</span>
+                        <div className="flex items-center justify-between">
+                            <span className="text-2xl font-black text-indigo-600 tracking-tighter uppercase">{companyInfo?.registration_code}</span>
+                            <button onClick={handleUpdateCode} className="p-2 hover:bg-white rounded-xl text-slate-400 hover:text-indigo-600 transition-all"><Settings size={18} /></button>
+                        </div>
+                    </div>
+                    <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex flex-col gap-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Join Secret</span>
+                        <div className="flex items-center justify-between">
+                            <span className="text-2xl font-black text-slate-800 tracking-tighter">••••••</span>
+                            <button onClick={handleUpdatePW} className="p-2 hover:bg-white rounded-xl text-slate-400 hover:text-indigo-600 transition-all"><Settings size={18} /></button>
+                        </div>
+                    </div>
+                </div>
+            </SettingCard>
+
+            {/* Pending Requests */}
+            {pendingMembers.length > 0 && (
+                <SettingCard title="가입 승인 대기" icon={Clock} desc="참여 신청 후 승인을 기다리는 구성원입니다." color="amber">
+                    <div className="space-y-3">
+                        {pendingMembers.map(m => (
+                            <div key={m.id} className="p-5 bg-white border border-amber-100 rounded-[28px] shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500 font-black text-lg">
+                                        {m.full_name?.slice(0, 1)}
+                                    </div>
+                                    <div>
+                                        <h4 className="font-black text-slate-800 leading-tight">{m.full_name}</h4>
+                                        <p className="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md mt-1 w-max">PENDING APPROVAL</p>
+                                    </div>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={handleSaveUser} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-black hover:bg-indigo-700">저장</button>
-                                    <button onClick={() => setEditingUserId(null)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-black hover:bg-slate-200">취소</button>
+                                    <button onClick={() => handleApprove(m.id)} className="px-5 py-2.5 bg-emerald-500 text-white rounded-2xl text-[11px] font-black hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">승인</button>
+                                    <button onClick={() => handleReject(m.id)} className="px-5 py-2.5 bg-slate-50 text-slate-400 rounded-2xl text-[11px] font-black hover:bg-rose-50 hover:text-rose-500 border border-transparent hover:border-rose-100 active:scale-95 transition-all">거절</button>
                                 </div>
                             </div>
-                        ) : (
-                            <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between w-full">
+                        ))}
+                    </div>
+                </SettingCard>
+            )}
+
+            {/* Approved Members */}
+            <SettingCard title="구성원 목록" icon={Users} desc={`전체 ${approvedMembers.length}명의 승인된 구성원`}>
+                <div className="divide-y divide-slate-100 bg-slate-50/50 rounded-3xl border border-slate-100 overflow-hidden">
+                    {approvedMembers.map(m => (
+                        <div key={m.id} className="p-5 flex items-center justify-between hover:bg-white transition-all group">
+                            <div className="flex items-center gap-4">
+                                <div className={`w-10 h-10 ${m.role === 'admin' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'} rounded-2xl flex items-center justify-center font-black text-sm`}>
+                                    {m.full_name?.slice(0, 1)}
+                                </div>
                                 <div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-lg font-black text-slate-800">{user.name}</span>
-                                        <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">@{user.id}</span>
-                                        {user.id === 'admin' && <span className="text-[10px] font-black bg-rose-50 text-rose-500 px-2 py-0.5 rounded-md border border-rose-100">최고관리자</span>}
-                                    </div>
-                                    <div className="flex gap-1 mt-2">
-                                        {user.permissions.map(p => (
-                                            <span key={p} className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md font-bold">{permissionLabels[p]}</span>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="flex gap-2 mt-4 md:mt-0">
-                                    {user.id !== 'admin' || loggedInUser.id === 'admin' ? (
-                                        <button onClick={() => handleEditUser(user)} className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-black hover:bg-slate-200">수정</button>
-                                    ) : null}
-                                    {user.id !== 'admin' && (
-                                        <button onClick={() => handleDeleteUser(user.id)} className="px-3 py-1.5 bg-rose-50 text-rose-500 rounded-lg text-xs font-black hover:bg-rose-100 border border-rose-100">삭제</button>
-                                    )}
+                                    <h4 className="font-black text-slate-800">{m.full_name}</h4>
+                                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${m.role === 'admin' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                                        {m.role}
+                                    </span>
                                 </div>
                             </div>
-                        )}
-                    </div>
-                ))}
-
-                {editingUserId === 'new' && (
-                    <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl shadow-sm space-y-4">
-                        <h4 className="font-black text-indigo-800 text-sm">새 계정 등록</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <input type="text" placeholder="아이디" value={editForm.id} onChange={e => setEditForm({ ...editForm, id: e.target.value })} className="px-3 py-2 bg-white border border-indigo-200 rounded-xl text-sm font-bold" />
-                            <input type="password" placeholder="비밀번호" value={editForm.pw} onChange={e => setEditForm({ ...editForm, pw: e.target.value })} className="px-3 py-2 bg-white border border-indigo-200 rounded-xl text-sm font-bold" />
-                            <input type="text" placeholder="이름" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="px-3 py-2 bg-white border border-indigo-200 rounded-xl text-sm font-bold" />
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                {m.id !== profile.id && (
+                                    <button onClick={() => handleReject(m.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors"><AlertCircle size={18} /></button>
+                                )}
+                            </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                            {Object.entries(permissionLabels).map(([key, label]) => (
-                                <label key={key} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-indigo-100 rounded-lg cursor-pointer">
-                                    <input type="checkbox" checked={editForm.permissions.includes(key)} onChange={() => togglePermission(key)} className="w-4 h-4 text-indigo-600 rounded" />
-                                    <span className="text-xs font-black text-slate-700">{label}</span>
-                                </label>
-                            ))}
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={handleSaveUser} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-black hover:bg-indigo-700 shadow-md">추가 완료</button>
-                            <button onClick={() => setEditingUserId(null)} className="px-4 py-2 bg-white text-slate-500 border border-slate-200 rounded-lg text-xs font-black hover:bg-slate-50">취소</button>
-                        </div>
-                    </div>
-                )}
-
-                {editingUserId !== 'new' && (
-                    <button onClick={handleAddUser} className="w-full py-4 border-2 border-dashed border-indigo-200 rounded-2xl text-indigo-400 text-sm font-black hover:bg-indigo-50 hover:text-indigo-600 transition-all mt-2">
-                        + 새로운 계정 추가
-                    </button>
-                )}
-            </div>
-        </SettingCard>
+                    ))}
+                </div>
+            </SettingCard>
+        </div>
     );
 }

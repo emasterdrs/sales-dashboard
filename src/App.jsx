@@ -57,12 +57,12 @@ import { SalesBI, SETTINGS } from './data/mockEngine';
 import { getYearlyCalendarData } from './lib/dateUtils';
 import { Quote } from './components/Quote';
 import { SettingsView } from './components/SettingsView';
+import { AuthView } from './components/AuthView';
+import { OnboardingView } from './components/OnboardingView';
+import { supabase } from './lib/supabase';
 // import { BondDashboard } from './components/BondDashboard'; // 채권 대시보드 제거
 
-// API 주소 설정 (로컬 환경과 터널 환경 자동 전환)
-const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:3001'
-    : 'https://full-clowns-bake.loca.lt';
+
 
 // 색상 팔레트 최적화
 const TEAM_COLORS = {
@@ -157,13 +157,62 @@ function SidebarIcon({ icon: Icon, label, active, onClick, badge }) {
 }
 
 export default function App() {
-    // 1. All hooks at the top
+    // 1. Supabase Auth & Profile State
+    const [session, setSession] = useState(null);
+    const [profile, setProfile] = useState(null);
+    const [loadingProfile, setLoadingProfile] = useState(true);
+
+    useEffect(() => {
+        // Init session
+        supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+            setSession(initialSession);
+            if (initialSession) fetchProfile(initialSession.user.id);
+            else setLoadingProfile(false);
+        });
+
+        // Listen for changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+            if (session) fetchProfile(session.user.id);
+            else {
+                setProfile(null);
+                setLoadingProfile(false);
+            }
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    const fetchProfile = async (userId) => {
+        setLoadingProfile(true);
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*, companies(*)')
+                .eq('id', userId)
+                .single();
+
+            if (error) throw error;
+            setProfile(data);
+        } catch (e) {
+            console.error('Profile fetch error:', e);
+        } finally {
+            setLoadingProfile(false);
+        }
+    };
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        setSession(null);
+        setProfile(null);
+    };
+
+    // 2. View States
     const [selectedMonth, setSelectedMonth] = useState(() => {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     });
     const [view, setView] = useState(() => {
-        // Preference: URL Hash > localStorage > Default
         const hash = window.location.hash.replace('#', '');
         return hash || localStorage.getItem('dashboard_view') || 'dashboard_team';
     });
@@ -195,138 +244,98 @@ export default function App() {
     const [fontFamily, setFontFamily] = useState('Gmarket');
     const [settingsSubView, setSettingsSubView] = useState('bizDays');
 
-    // Auth & Users
-    const [users, setUsers] = useState(() => {
-        const defaultAdmin = { id: 'admin', pw: '123123', name: '관리자', permissions: ['dashboard_team', 'dashboard_type', 'settings'] };
+    // 3. Calculation & Master Data Logic
+    const [isLoadingData, setIsLoadingData] = useState(false);
+    const [currentTime, setCurrentTime] = useState('');
+
+    // Cloud Data Fetcher
+    const fetchCloudData = async () => {
+        if (!profile || !profile.company_id || profile.status !== 'approved') return;
+
+        setIsLoadingData(true);
         try {
-            const saved = localStorage.getItem('dashboard_users');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                const adminIdx = parsed.findIndex(u => u.id === 'admin');
-                if (adminIdx !== -1) {
-                    parsed[adminIdx].pw = '123123';
-                } else {
-                    parsed.push(defaultAdmin);
-                }
-                return parsed;
+            // 1. Fetch Sales Actual
+            const { data: actual, error: actualErr } = await supabase
+                .from('sales_actual')
+                .select('*')
+                .eq('company_id', profile.company_id);
+            if (actualErr) throw actualErr;
+
+            // 2. Fetch Sales Target
+            const { data: target, error: targetErr } = await supabase
+                .from('sales_target')
+                .select('*')
+                .eq('company_id', profile.company_id);
+            if (targetErr) throw targetErr;
+
+            // 3. Fetch Settings
+            const { data: setRes, error: setErr } = await supabase
+                .from('settings')
+                .select('data')
+                .eq('company_id', profile.company_id)
+                .single();
+
+            // Map DB records back to UI format (Korean keys)
+            const mappedActual = (actual || []).map(r => ({
+                '년도월': r.year_month,
+                '영업팀': r.team_name,
+                '영업사원명': r.person_name,
+                '거래처코드': r.customer_code,
+                '거래처명': r.customer_name,
+                '품목유형': r.type_name,
+                '품목코드': r.item_code,
+                '품목명': r.item_name,
+                '금액': r.amount,
+                '매출금액': r.amount
+            }));
+
+            const mappedTarget = (target || []).map(r => ({
+                '년도월': r.year_month,
+                '영업팀': r.team_name,
+                '영업사원명': r.person_name,
+                '금액': r.amount,
+                '목표금액': r.amount
+            }));
+
+            setMasterData({
+                actual: mappedActual,
+                target: mappedTarget
+            });
+
+            // Sync settings to localStorage for the existing components (backward compatibility)
+            if (setRes && setRes.data) {
+                localStorage.setItem('dashboard_settings', JSON.stringify(setRes.data));
             }
-        } catch (e) { }
-        return [defaultAdmin];
-    });
-    useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/users`);
-                if (res.ok) {
-                    const dbUsers = await res.json();
-                    if (dbUsers && dbUsers.length > 0) {
-                        setUsers(dbUsers);
-                    }
-                }
-            } catch (e) {
-                console.error('사용자 목록 로드 실패 (DB 서버 확인 필요):', e);
-            }
-        };
-        fetchUsers();
-    }, []);
 
-    useEffect(() => {
-        try {
-            localStorage.setItem('dashboard_users', JSON.stringify(users));
-
-            // 로컬 서버로 사용자 정보 동기화 (계정 생성 시 DB 반영)
-            fetch(`${API_BASE_URL}/api/users/sync`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(users)
-            }).catch(err => console.error('사용자 동기화 실패:', err));
-        } catch (e) { }
-    }, [users]);
-
-    const [loggedInUser, setLoggedInUser] = useState(() => {
-        try {
-            const saved = sessionStorage.getItem('dashboard_logged_in_user');
-            return saved ? JSON.parse(saved) : null;
-        } catch (e) { return null; }
-    });
-
-    useEffect(() => {
-        if (loggedInUser) {
-            sessionStorage.setItem('dashboard_logged_in_user', JSON.stringify(loggedInUser));
-        } else {
-            sessionStorage.removeItem('dashboard_logged_in_user');
+        } catch (e) {
+            console.error('Cloud data fetch failed:', e);
+        } finally {
+            setIsLoadingData(false);
         }
-    }, [loggedInUser]);
+    };
 
-    const [loginId, setLoginId] = useState('');
-    const [loginPw, setLoginPw] = useState('');
+    useEffect(() => {
+        if (profile && profile.company_id && profile.status === 'approved') {
+            fetchCloudData();
+        }
+    }, [profile]);
 
     const [masterData, setMasterData] = useState(() => {
-        // Source of truth: JSON file (Synced from local computer)
-        const jsonContent = actualDataJson || { actual: [], target: [], bonds: [] };
-
-        // Load sync'd data preference
         try {
-            // Priority 1: JSON Data (Official source)
-            // Even if empty, it should overwrite cache if it was explicitly updated.
             const saved = localStorage.getItem('dashboard_master_data');
-            if (saved) {
-                const cached = JSON.parse(saved);
-                // IF JSON has data, it ALWAYS wins.
-                // IF JSON is empty and cache has data... but JSON's lastSync is newer or explicit...
-                // Better strategy: Use JSON always if it's there.
-                if (jsonContent.actual && jsonContent.actual.length > 0) {
-                    return jsonContent;
-                }
-                // If JSON is empty (recently initialized), we should probably clear cache too.
-                // We detect explicitly empty by checking actual exists but length is 0.
-                if (jsonContent.actual && jsonContent.actual.length === 0 && jsonContent.lastSync === "") {
-                    // This is our 'fresh start' flag. Clear everything and use the generator.
-                    localStorage.removeItem('dashboard_master_data');
-                    return generateFullDataset();
-                }
-                return cached;
-            }
-        } catch (e) {
-            console.warn('Failed to load master data state', e);
-        }
-        return jsonContent;
+            if (saved) return JSON.parse(saved);
+        } catch (e) { }
+        return { actual: [], target: [] };
     });
+
 
     useEffect(() => {
         try {
             localStorage.setItem('dashboard_master_data', JSON.stringify(masterData));
-        } catch (e) {
-            console.warn('Failed to save master data to localStorage', e);
-        }
+        } catch (e) { }
     }, [masterData]);
 
-    const [lastUpdated, setLastUpdated] = useState(() => {
-        if (actualDataJson && actualDataJson.lastSync && actualDataJson.lastSync !== "") {
-            const date = new Date(actualDataJson.lastSync);
-            if (!isNaN(date.getTime())) {
-                const yyyy = date.getFullYear();
-                const mm = String(date.getMonth() + 1).padStart(2, '0');
-                const dd = String(date.getDate()).padStart(2, '0');
-                const hh = String(date.getHours()).padStart(2, '0');
-                const min = String(date.getMinutes()).padStart(2, '0');
-                return `${yyyy}년 ${mm}월 ${dd}일 ${hh}:${min}`;
-            }
-        }
-        const now = new Date();
-        return `${now.getFullYear()}년 ${String(now.getMonth() + 1).padStart(2, '0')}월 ${String(now.getDate()).padStart(2, '0')}일 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    });
 
-    const [currentTime, setCurrentTime] = useState(() => {
-        const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const hh = String(now.getHours()).padStart(2, '0');
-        const min = String(now.getMinutes()).padStart(2, '0');
-        const ss = String(now.getSeconds()).padStart(2, '0');
-        return `${yyyy}년 ${mm}월 ${dd}일 ${hh}:${min}:${ss}`;
-    });
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -537,28 +546,36 @@ export default function App() {
         'Inter': 'font-inter'
     };
 
-    if (!loggedInUser) {
+    if (!session) {
+        return <AuthView onLoginSuccess={(user) => fetchProfile(user.id)} />;
+    }
+
+    if (loadingProfile) {
         return (
-            <div className={`min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center ${fontMap[fontFamily]}`}>
-                <div className="bg-white p-10 rounded-3xl shadow-2xl w-[400px] border border-slate-100">
-                    <div className="text-center mb-8">
-                        <h2 className="text-3xl font-black text-slate-900 tracking-tighter mb-2">영업 대시보드</h2>
-                        <p className="text-slate-400 font-bold text-sm">계정에 로그인하세요</p>
-                    </div>
-                    <form onSubmit={handleLogin} className="space-y-5">
-                        <div>
-                            <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2">아이디</label>
-                            <input type="text" value={loginId} onChange={e => setLoginId(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-bold text-slate-700 transition-all" autoFocus />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2">비밀번호</label>
-                            <input type="password" value={loginPw} onChange={e => setLoginPw(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-bold text-slate-700 transition-all" />
-                        </div>
-                        <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg py-3.5 rounded-xl transition-all mt-4 shadow-lg shadow-indigo-600/30 active:scale-[0.98]">
-                            로그인
-                        </button>
-                    </form>
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+                <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+            </div>
+        );
+    }
+
+    if (!profile || !profile.company_id) {
+        return <OnboardingView user={session.user} onComplete={() => fetchProfile(session.user.id)} />;
+    }
+
+    if (profile.status === 'pending') {
+        return (
+            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-10 text-center text-slate-800">
+                <div className="w-24 h-24 bg-amber-50 rounded-[40px] flex items-center justify-center text-amber-500 mb-8 border border-amber-100 shadow-xl shadow-amber-50">
+                    <Clock size={48} className="animate-pulse" />
                 </div>
+                <h2 className="text-3xl font-black tracking-tighter mb-4 italic uppercase">Pending Approval</h2>
+                <p className="text-slate-400 font-bold max-w-sm leading-relaxed mb-8">
+                    {profile.companies?.name}의 참여 신청이 완료되었습니다.<br />
+                    관리자가 승인하면 모든 데이터를 볼 수 있습니다.
+                </p>
+                <button onClick={handleLogout} className="px-8 py-3 bg-white border border-slate-200 rounded-2xl text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-rose-500 transition-colors">
+                    Logout
+                </button>
             </div>
         );
     }
@@ -568,29 +585,22 @@ export default function App() {
             <aside className="hidden md:flex w-64 bg-white border-r border-slate-200/60 flex-col py-10 z-50 h-screen sticky top-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)] px-6">
                 <div className="flex items-center gap-4 px-2 mb-12">
                     <div className="flex flex-col justify-center">
-                        <button onClick={() => {
-                            if (loggedInUser.permissions.includes('dashboard_team')) setView('dashboard_team');
-                            else if (loggedInUser.permissions.includes('dashboard_type')) setView('dashboard_type');
-                        }} className="text-3xl font-black text-slate-900 tracking-tighter leading-none hover:text-indigo-600 transition-colors text-left">
-                            영업 대시보드
+                        <button onClick={() => setView('dashboard_team')} className="text-2xl font-black text-slate-900 tracking-tighter leading-none hover:text-indigo-600 transition-colors text-left uppercase italic">
+                            {profile.companies?.name}
                         </button>
-                        <div className="mt-3 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100 flex items-center gap-1.5 w-max">
-                            <Clock size={12} className="text-emerald-500" />
-                            {currentTime}
+                        <div className="mt-3 text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100 flex items-center gap-1.5 w-max uppercase tracking-widest">
+                            <Shield size={10} />
+                            {profile.role === 'admin' ? 'Admin Mode' : 'Staff Mode'}
                         </div>
                     </div>
                 </div>
 
                 <nav className="flex-1">
                     <div className="space-y-2">
-                        {loggedInUser.permissions.includes('dashboard_team') && (
-                            <SidebarIcon active={view === 'dashboard_team'} icon={BarChart3} label="매출 실적 (팀별)" onClick={() => setView('dashboard_team')} />
-                        )}
-                        {loggedInUser.permissions.includes('dashboard_type') && (
-                            <SidebarIcon active={view === 'dashboard_type'} icon={PieChartIcon} label="매출 실적 (유형별)" onClick={() => setView('dashboard_type')} />
-                        )}
-                        {/* 채권 현황 제거 */}
-                        {loggedInUser.permissions.includes('settings') && (
+                        <SidebarIcon active={view === 'dashboard_team'} icon={BarChart3} label="매출 실적 (팀별)" onClick={() => setView('dashboard_team')} />
+                        <SidebarIcon active={view === 'dashboard_type'} icon={PieChartIcon} label="매출 실적 (유형별)" onClick={() => setView('dashboard_type')} />
+
+                        {(profile.role === 'admin') && (
                             <SidebarIcon active={view === 'settings'} icon={Settings} label="설정" onClick={() => setView('settings')} />
                         )}
 
@@ -607,7 +617,7 @@ export default function App() {
                                         { id: 'org', name: '조직 및 인원' },
                                         { id: 'types', name: '유형명' },
                                         { id: 'data', name: '판매 데이터' },
-                                        { id: 'accounts', name: '계정 관리' },
+                                        { id: 'accounts', name: '멤버 관리' },
                                         { id: 'logs', name: '접속 로그' }
                                     ].map(sub => (
                                         <button
@@ -627,14 +637,14 @@ export default function App() {
                 <div className="pt-8 mt-8 border-t border-slate-100 px-2 flex justify-between items-center">
                     <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 flex-1">
                         <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
-                            <span className="font-extrabold text-[12px] uppercase">{loggedInUser.name.slice(0, 1)}</span>
+                            <span className="font-extrabold text-[12px] uppercase">{profile.full_name?.slice(0, 1)}</span>
                         </div>
                         <div className="flex flex-col overflow-hidden">
-                            <span className="text-[12px] font-black text-slate-800 truncate leading-tight tracking-tighter">{loggedInUser.name}</span>
-                            <span className="text-[9px] font-bold text-slate-400">@{loggedInUser.id}</span>
+                            <span className="text-[12px] font-black text-slate-800 truncate leading-tight tracking-tighter">{profile.full_name}</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{profile.role}</span>
                         </div>
                     </div>
-                    <button onClick={() => setLoggedInUser(null)} className="ml-2 p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors">
+                    <button onClick={handleLogout} className="ml-2 p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                     </button>
                 </div>
@@ -651,31 +661,30 @@ export default function App() {
                                 </span>
                             </h1>
                             <div className="flex items-center gap-4 text-slate-400 font-bold text-xs md:text-[11px] px-1 uppercase tracking-wider">
-                                <span className="flex items-center gap-1.5">
-                                    <Clock size={12} className="text-indigo-400" />
-                                    최종 업데이트: {lastUpdated}
+                                <span className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full border border-indigo-100">
+                                    <Globe size={10} className="animate-pulse" />
+                                    Cloud Connected
                                 </span>
                             </div>
                         </div>
 
                         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 md:gap-6 shrink-0 w-full md:w-auto">
-
-                            <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition-all hover:border-indigo-500/30">
+                            <div className="overflow-x-auto no-scrollbar rounded-3xl border border-slate-200 bg-slate-50 shadow-sm transition-all hover:border-indigo-500/30">
                                 <table className="text-[10px] md:text-[11px] leading-tight min-w-full">
                                     <thead className="bg-slate-50 border-b border-slate-200">
-                                        <tr className="text-slate-800 font-black text-[13px] md:text-[15px] uppercase tracking-tighter whitespace-nowrap">
-                                            <th className="px-3 md:px-5 py-3 border-r border-slate-200">영업일</th>
-                                            <th className="px-3 md:px-5 py-3 border-r border-slate-200">총 영업일</th>
-                                            <th className="px-3 md:px-5 py-3 border-r border-slate-200">진도율</th>
-                                            <th className="px-3 md:px-5 py-3">1일 평균</th>
+                                        <tr className="text-slate-800 font-black text-[11px] md:text-[12px] uppercase tracking-widest whitespace-nowrap">
+                                            <th className="px-5 py-3 border-r border-slate-200">Biz Days</th>
+                                            <th className="px-5 py-3 border-r border-slate-200">Total</th>
+                                            <th className="px-5 py-3 border-r border-slate-200">Progress</th>
+                                            <th className="px-5 py-3">1 Day Avg</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-center font-black">
-                                        <tr className="text-slate-900 text-xl md:text-2xl tracking-tighter">
-                                            <td className="px-3 md:px-5 py-2.5 border-r border-slate-200">{bizDayInfo.currentBusinessDay}</td>
-                                            <td className="px-3 md:px-5 py-2.5 border-r border-slate-200">{bizDayInfo.totalBusinessDays}</td>
-                                            <td className="px-3 md:px-5 py-2.5 border-r border-slate-200">{((bizDayInfo.currentBusinessDay / (bizDayInfo.totalBusinessDays || 1)) * 100).toFixed(1)}%</td>
-                                            <td className="px-3 md:px-5 py-2.5">{(100 / (bizDayInfo.totalBusinessDays || 1)).toFixed(1)}%</td>
+                                        <tr className="text-slate-900 text-lg md:text-xl tracking-tighter">
+                                            <td className="px-5 py-2.5 border-r border-slate-200">{bizDayInfo.currentBusinessDay}</td>
+                                            <td className="px-5 py-2.5 border-r border-slate-200">{bizDayInfo.totalBusinessDays}</td>
+                                            <td className="px-5 py-2.5 border-r border-slate-200">{((bizDayInfo.currentBusinessDay / (bizDayInfo.totalBusinessDays || 1)) * 100).toFixed(1)}%</td>
+                                            <td className="px-5 py-2.5">{(100 / (bizDayInfo.totalBusinessDays || 1)).toFixed(1)}%</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -685,66 +694,128 @@ export default function App() {
                 </header>
 
                 <main className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-4 bg-[#f8fafc] md:max-h-screen">
-                    {view === 'settings' ? <SettingsView setMasterData={setMasterData} masterData={masterData} setLastUpdated={setLastUpdated} fontFamily={fontFamily} setFontFamily={setFontFamily} fontMap={fontMap} selectedMonth={selectedMonth} subView={settingsSubView} users={users} setUsers={setUsers} loggedInUser={loggedInUser} /> : (
-                        <div className="max-w-[1600px] mx-auto space-y-4">
-                            <div className="flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4">
-                                <div className="flex flex-wrap items-center gap-3 bg-white/80 backdrop-blur-md p-2 px-4 rounded-2xl border border-slate-200/60 shadow-sm transition-all hover:shadow-md">
-                                    <div className="flex items-center gap-2 pr-3 border-r border-slate-100">
-                                        <Calendar size={18} className="text-indigo-500" />
-                                        <select
-                                            value={selectedMonth}
-                                            onChange={(e) => setSelectedMonth(e.target.value)}
-                                            className="bg-transparent text-sm md:text-base font-black text-slate-700 outline-none cursor-pointer appearance-none py-1"
-                                        >
-                                            <optgroup label="2026년">
-                                                <option value="2026-03">2026년 03월</option>
-                                                <option value="2026-02">2026년 02월</option>
-                                                <option value="2026-01">2026년 01월</option>
-                                            </optgroup>
-                                            <optgroup label="2025년">
-                                                <option value="2025-12">2025년 12월</option>
-                                                <option value="2025-11">2025년 11월</option>
-                                                <option value="2025-10">2025년 10월</option>
-                                                <option value="2025-09">2025년 09월</option>
-                                                <option value="2025-08">2025년 08월</option>
-                                                <option value="2025-07">2025년 07월</option>
-                                                <option value="2025-06">2025년 06월</option>
-                                                <option value="2025-05">2025년 05월</option>
-                                                <option value="2025-04">2025년 04월</option>
-                                                <option value="2025-03">2025년 03월</option>
-                                                <option value="2025-02">2025년 02월</option>
-                                                <option value="2025-01">2025년 01월</option>
-                                            </optgroup>
-                                            <optgroup label="2024년">
-                                                <option value="2024-12">2024년 12월</option>
-                                                <option value="2024-11">2024년 11월</option>
-                                                <option value="2024-10">2024년 10월</option>
-                                                <option value="2024-09">2024년 09월</option>
-                                                <option value="2024-08">2024년 08월</option>
-                                                <option value="2024-07">2024년 07월</option>
-                                                <option value="2024-06">2024년 06월</option>
-                                                <option value="2024-05">2024년 05월</option>
-                                                <option value="2024-04">2024년 04월</option>
-                                                <option value="2024-03">2024년 03월</option>
-                                                <option value="2024-02">2024년 02월</option>
-                                                <option value="2024-01">2024년 01월</option>
-                                            </optgroup>
-                                            <optgroup label="2023년">
-                                                <option value="2023-12">2023년 12월</option>
-                                            </optgroup>
-                                        </select>
-                                        <ChevronDown size={12} className="text-slate-400" />
+                    {view === 'settings' ? (
+                        <SettingsView
+                            setMasterData={setMasterData}
+                            masterData={masterData}
+                            refreshData={fetchCloudData}
+                            fontFamily={fontFamily}
+                            setFontFamily={setFontFamily}
+                            fontMap={fontMap}
+                            selectedMonth={selectedMonth}
+                            subView={settingsSubView}
+                            profile={profile}
+                            session={session}
+                        />
+                    ) : (
+                        <div className="max-w-[1600px] mx-auto space-y-6">
+                            {/* KPI Summary Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-4 duration-1000">
+                                <CompactStat
+                                    title="전체 매출 실적"
+                                    value={fMetric(summary.actual)}
+                                    detail={`목표금액: ${fMetric(summary.target)}`}
+                                    icon={DollarSign}
+                                    color="indigo"
+                                    trend={summary.achievementRate}
+                                />
+                                <CompactStat
+                                    title="달성률 (목표대비)"
+                                    value={fPercent(summary.achievementRate)}
+                                    detail={`진도율(${fPercent(summary.progressRate)}) 대비 ${summary.progressGap >= 0 ? '+' : ''}${summary.progressGap.toFixed(1)}%`}
+                                    icon={Target}
+                                    color="emerald"
+                                />
+                                <CompactStat
+                                    title="전년 동기 대비(YoY)"
+                                    value={fPercent(summary.yoyGrowth)}
+                                    detail={`전년 실적: ${fMetric(summary.lastYearActual)}`}
+                                    icon={TrendingUp}
+                                    color="amber"
+                                    trend={summary.yoyGrowth}
+                                />
+                                <CompactStat
+                                    title="예상 마감 실적"
+                                    value={fMetric(summary.forecast)}
+                                    detail={`현재 추세 기반 월말 예상치`}
+                                    icon={Zap}
+                                    color="violet"
+                                    trend={summary.cumulativeAchievement}
+                                />
+                            </div>
+
+                            <div className="flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-6">
+                                <div className="flex flex-wrap items-center gap-4 bg-white/80 backdrop-blur-md p-3 px-5 rounded-3xl border border-slate-200/60 shadow-sm transition-all hover:shadow-md">
+                                    <div className="flex items-center gap-3 pr-4 border-r border-slate-100">
+                                        <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-2xl shadow-inner">
+                                            <Calendar size={22} className="group-hover:scale-110 transition-transform" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5">Analysis Period</span>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => {
+                                                    const prev = new Date(selectedMonth + '-01');
+                                                    prev.setMonth(prev.getMonth() - 1);
+                                                    setSelectedMonth(toIsoString(prev).slice(0, 7));
+                                                }} className="p-1 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-indigo-600"><ChevronLeft size={16} /></button>
+                                                <select
+                                                    value={selectedMonth}
+                                                    onChange={(e) => setSelectedMonth(e.target.value)}
+                                                    className="bg-transparent text-[15px] font-black text-slate-800 outline-none cursor-pointer appearance-none py-0.5 px-1 hover:text-indigo-600 transition-colors"
+                                                >
+                                                    {[2026, 2025, 2024].map(year => (
+                                                        <optgroup key={year} label={`${year}년`}>
+                                                            {Array.from({ length: 12 }, (_, i) => 12 - i).map(month => {
+                                                                const mStr = String(month).padStart(2, '0');
+                                                                return <option key={`${year}-${mStr}`} value={`${year}-${mStr}`}>{`${year}년 ${mStr}월`}</option>;
+                                                            })}
+                                                        </optgroup>
+                                                    ))}
+                                                </select>
+                                                <button onClick={() => {
+                                                    const next = new Date(selectedMonth + '-01');
+                                                    next.setMonth(next.getMonth() + 1);
+                                                    setSelectedMonth(toIsoString(next).slice(0, 7));
+                                                }} className="p-1 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-indigo-600"><ChevronRight size={16} /></button>
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    <div className="flex gap-1.5 bg-slate-100/50 p-1.5 rounded-xl">
-                                        <button onClick={() => setMainTab('current')} className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-black transition-all ${mainTab === 'current' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>현재실적</button>
-                                        <button onClick={() => setMainTab('expected')} className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-black transition-all ${mainTab === 'expected' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>예상마감</button>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Data Status</span>
+                                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 rounded-full border border-emerald-100 shadow-sm overflow-hidden animate-pulse">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                                                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter">Live DB Sync</span>
+                                            </div>
+                                        </div>
+                                        <p className="text-[13px] font-black text-slate-600 tracking-tight mt-0.5">{lastUpdated} 업데이트됨</p>
                                     </div>
                                 </div>
 
-                                <div className="overflow-x-auto no-scrollbar">
-                                    <div className="flex bg-white/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/60 w-fit shadow-sm transition-all hover:shadow-md min-w-full sm:min-w-0">
-                                        <div className="flex gap-1 bg-slate-100/50 p-1 rounded-xl">
+                                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
+                                    <div className="flex items-center gap-5 bg-white/80 backdrop-blur-md p-4 px-6 rounded-3xl border border-slate-200/60 shadow-sm transition-all hover:shadow-md">
+                                        <div className="flex-1 min-w-[140px] md:min-w-[180px]">
+                                            <div className="flex justify-between items-center mb-2 px-1">
+                                                <span className="text-[11px] font-black text-indigo-600 uppercase tracking-wider">영업 진도율</span>
+                                                <span className="text-[12px] font-black text-slate-700">{fPercent(summary.progressRate)}</span>
+                                            </div>
+                                            <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/50 p-[2px]">
+                                                <div
+                                                    className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 rounded-full shadow-[0_0_12px_rgba(99,102,241,0.4)] transition-all duration-1000 ease-out"
+                                                    style={{ width: `${summary.progressRate}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="w-[1px] h-10 bg-slate-100" />
+                                        <div className="flex gap-1.5 bg-slate-100/50 p-1 rounded-2xl">
+                                            <button onClick={() => setMainTab('current')} className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${mainTab === 'current' ? 'bg-white text-indigo-600 shadow-sm scale-105' : 'text-slate-400 hover:text-slate-600'}`}>현재실적</button>
+                                            <button onClick={() => setMainTab('expected')} className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${mainTab === 'expected' ? 'bg-white text-indigo-600 shadow-sm scale-105' : 'text-slate-400 hover:text-slate-600'}`}>예상마감</button>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex bg-white/80 backdrop-blur-md p-2 rounded-3xl border border-slate-200/60 shadow-sm transition-all hover:shadow-md">
+                                        <div className="flex gap-1 bg-slate-100/50 p-1 rounded-2xl">
                                             {[
                                                 { id: 'goal', name: '목표대비' },
                                                 { id: 'yoy', name: '전년대비' },
@@ -754,7 +825,7 @@ export default function App() {
                                                 <button
                                                     key={tab.id}
                                                     onClick={() => setAnalysisMode(tab.id)}
-                                                    className={`px-4 md:px-6 py-1.5 md:py-2 rounded-lg text-[10px] md:text-sm font-black transition-all whitespace-nowrap ${analysisMode === tab.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                    className={`px-4 py-2 rounded-xl text-[12px] font-black transition-all whitespace-nowrap ${analysisMode === tab.id ? 'bg-white text-indigo-600 shadow-sm scale-110' : 'text-slate-400 hover:text-slate-600'}`}
                                                 >
                                                     {tab.name}
                                                 </button>
